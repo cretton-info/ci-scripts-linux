@@ -21,8 +21,10 @@ echo "----------------------------------------------------------"
 
 # 1. Atualização dos Repositórios e Sistema
 log_info "1/5. Atualizando base de pacotes..."
-apt-get update -y || die "Falha ao atualizar a lista de pacotes."
-apt-get upgrade -y || die "Falha ao atualizar pacotes instalados."
+# Não aborta em falha: um repositório de terceiros (PPA) fora do ar ou bloqueado
+# não deve impedir o provisionamento com os repositórios essenciais que funcionaram.
+apt-get update -y || log_warn "Alguns repositórios falharam ao atualizar, continuando com os que funcionaram."
+apt-get upgrade -y || log_warn "Falha ao atualizar alguns pacotes instalados, continuando o provisionamento."
 
 # 2. Instalação de Utilitários Essenciais de Sistema
 log_info "2/5. Instalando utilitários essenciais de CLI e diagnóstico..."
