@@ -11,6 +11,11 @@ source "${SCRIPT_DIR}/../lib/common.sh" 2>/dev/null || source "${SCRIPT_DIR}/lib
 
 require_root
 
+AUTO_YES="${AUTO_YES:-0}"
+for arg in "$@"; do
+    [ "$arg" = "--yes" ] || [ "$arg" = "-y" ] && AUTO_YES=1
+done
+
 echo "=========================================================="
 echo " 🧹 MANUTENÇÃO E LIMPEZA DO SISTEMA — $(hostname)"
 echo "=========================================================="
@@ -32,8 +37,16 @@ else
 fi
 
 if has_cmd docker; then
-    log_info "4/5. Limpando recursos Docker não utilizados (imagens, redes, cache de build)..."
-    docker system prune -f
+    echo ""
+    echo "🐳 O comando abaixo removerá imagens, redes e cache de build do Docker não usados"
+    echo "   por nenhum contêiner em execução (não afeta contêineres nem volumes ativos):"
+    docker system df 2>/dev/null || true
+    if [ "$AUTO_YES" -eq 1 ] || confirm "4/5. Executar 'docker system prune' agora?"; then
+        log_info "Limpando recursos Docker não utilizados..."
+        docker system prune -f
+    else
+        log_warn "4/5. Limpeza do Docker pulada pelo usuário."
+    fi
 else
     log_warn "4/5. Docker não encontrado, pulando limpeza de contêineres."
 fi

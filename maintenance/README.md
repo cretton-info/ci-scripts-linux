@@ -10,4 +10,13 @@
 sudo ~/scripts/manutencao_avancada.sh
 ```
 
-Bom candidato para rodar semanalmente via cron em VPS/home lab.
+O `docker system prune` pede confirmação antes de rodar (mostra `docker system df` para você decidir).
+Para rodar sem interação (ex.: cron), use `--yes`/`-y` ou `AUTO_YES=1`:
+
+```bash
+sudo ~/scripts/manutencao_avancada.sh --yes
+# ou
+AUTO_YES=1 sudo -E ~/scripts/manutencao_avancada.sh
+```
+
+Bom candidato para rodar semanalmente via cron em VPS/home lab (com `--yes`).
