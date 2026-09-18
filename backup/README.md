@@ -30,3 +30,13 @@ sudo ~/scripts/restaurar_backup.sh
 Restaurar no modo "locais originais" sobrescreve arquivos do sistema em `/`. O script sempre lista o
 conteúdo do backup e pede confirmação explícita antes de prosseguir, além de gerar um backup preventivo
 automático — mas revise o backup preventivo salvo antes de descartá-lo.
+
+## Verificação de integridade
+
+Todo backup criado pelo `backup_multiperfil.sh` é testado (`tar -tzf`) e ganha um checksum
+(`<arquivo>.tar.gz.sha256`) logo após ser gravado — se o `.tar.gz` sair corrompido, o script apaga o
+arquivo e falha na hora, em vez de deixar um backup ruim para trás.
+
+O `restaurar_backup.sh` confere esse checksum antes de tocar em qualquer coisa e recusa restaurar um
+backup que não bate. Backups antigos sem `.sha256` (de antes dessa verificação existir) caem
+automaticamente para um teste de leitura do `tar` como fallback.
