@@ -43,6 +43,30 @@ painel
   cedo se rodados sem privilégio.
 - Arrays em vez de strings com word-splitting para listas de caminhos/portas.
 
+## Logs automáticos
+
+Todo `log_warn`/`log_error` (e portanto `die`) grava automaticamente em arquivo, além de aparecer no
+terminal — não precisa de nenhuma configuração extra por script. Local, um arquivo por script:
+
+- `sudo` / root: `/var/log/ci-scripts-linux/<script>.log`
+- Usuário comum: `~/.local/state/ci-scripts-linux/logs/<script>.log`
+- Se nenhum dos dois for gravável: `/tmp/ci-scripts-linux-logs/<script>.log`
+
+Para forçar outro local: `CI_LOG_DIR=/caminho sudo ~/scripts/manutencao_avancada.sh`.
+
+Os logs não têm rotação automática. Em VPS/cliente, cadastre um `logrotate` simples se o volume
+justificar:
+
+```
+/var/log/ci-scripts-linux/*.log {
+    weekly
+    rotate 8
+    compress
+    missingok
+    notifempty
+}
+```
+
 ## CI
 
 Todo push/PR roda [ShellCheck](https://www.shellcheck.net/) via GitHub Actions
