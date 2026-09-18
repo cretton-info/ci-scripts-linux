@@ -73,7 +73,13 @@ sudo ~/scripts/backup_multiperfil.sh --help       # ajuda
 **O que grava no sistema:**
 
 - `~/backups_sistema/<perfil>/backup_<perfil>_<data>.tar.gz`
-- Apaga (`find ... -delete`) backups do mesmo perfil com mais de `RETENCAO_DIAS` dias.
+- `~/backups_sistema/<perfil>/backup_<perfil>_<data>.tar.gz.sha256` — checksum gerado logo após a
+  criação, usado pelo `restaurar_backup.sh` para detectar corrupção antes de restaurar.
+- Apaga (`find ... -delete`) backups e checksums do mesmo perfil com mais de `RETENCAO_DIAS` dias.
+
+**Verificação de integridade:** depois de criar o `.tar.gz`, o script testa a leitura com
+`tar -tzf` e grava o checksum. Se o teste falhar, apaga o arquivo corrompido e encerra com erro —
+nunca deixa um backup ruim para trás.
 
 **Comportamento com diretórios ausentes:** origens que não existem na máquina são ignoradas com
 `log_warn` (não interrompe o backup) — por isso um mesmo perfil funciona tanto num home lab completo
@@ -102,8 +108,12 @@ em dois modos:
 sudo ~/scripts/restaurar_backup.sh
 ```
 
-Fluxo: escolhe o perfil → escolhe o arquivo `.tar.gz` (lista ordenada do mais recente) → escolhe o
-modo de destino.
+Fluxo: escolhe o perfil → escolhe o arquivo `.tar.gz` (lista ordenada do mais recente) → **verificação
+de integridade** → escolhe o modo de destino.
+
+**Verificação de integridade (antes de qualquer restauração, nos dois modos):** confere o checksum
+`.sha256` salvo junto do backup, se existir. Se não bater, aborta sem tocar em nada. Se o backup for
+antigo e não tiver `.sha256`, cai para um teste de leitura com `tar -tzf` como fallback.
 
 **Rede de segurança no modo "locais originais":**
 

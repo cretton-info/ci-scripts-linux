@@ -67,6 +67,27 @@ if [ -z "$ARQUIVO_SELECIONADO" ] || [ ! -f "$ARQUIVO_SELECIONADO" ]; then
     die "Opção de arquivo inválida!"
 fi
 
+# 2.1 Verificação de integridade antes de mexer em qualquer coisa: usa o
+# checksum gravado na criação do backup se existir (mais confiável — detecta
+# corrupção do arquivo mesmo que o tar ainda consiga listá-lo), senão cai
+# para um teste de leitura do próprio tar.
+echo ""
+log_info "Verificando integridade do backup selecionado..."
+CHECKSUM_ARQUIVO="${ARQUIVO_SELECIONADO}.sha256"
+if [ -f "$CHECKSUM_ARQUIVO" ]; then
+    if (cd "$(dirname "$ARQUIVO_SELECIONADO")" && sha256sum -c "$(basename "$CHECKSUM_ARQUIVO")") > /dev/null 2>&1; then
+        log_ok "Checksum SHA-256 confere."
+    else
+        die "Checksum SHA-256 não confere! O backup pode estar corrompido. Abortando restauração."
+    fi
+else
+    log_warn "Backup sem checksum salvo (criado antes da verificação de integridade). Testando leitura do tar..."
+    if ! tar -tzf "$ARQUIVO_SELECIONADO" > /dev/null 2>&1; then
+        die "Não foi possível ler o conteúdo do backup — arquivo corrompido. Abortando restauração."
+    fi
+    log_ok "Leitura do tar OK."
+fi
+
 # 3. Definição do Local de Destino
 echo ""
 echo "=========================================================="
@@ -151,7 +172,9 @@ if [ "$TAR_EXIT" -eq 0 ]; then
     log_ok "RESTAURAÇÃO CONCLUÍDA COM SUCESSO!"
     echo "=========================================="
     echo "📍 Arquivos restaurados em: $TARGET_DIR"
-    [ -n "$SAFETY_TAR" ] && echo "🛟 Backup preventivo do estado anterior: $SAFETY_TAR"
+    if [ -n "$SAFETY_TAR" ]; then
+        echo "🛟 Backup preventivo do estado anterior: $SAFETY_TAR"
+    fi
 else
     die "Erro durante a extração do arquivo tar (código: $TAR_EXIT)."
 fi
