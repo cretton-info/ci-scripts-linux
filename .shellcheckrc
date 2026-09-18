@@ -1,0 +1,2 @@
+# SC1091: não conseguimos resolver os "source" dinâmicos (repo vs. ~/scripts flat) estaticamente.
+disable=SC1091
