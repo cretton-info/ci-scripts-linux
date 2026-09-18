@@ -95,15 +95,33 @@ case "$MODO_DESTINO" in
         mkdir -p "$SAFETY_DIR"
         SAFETY_TAR="${SAFETY_DIR}/pre_restore_${PERFIL_SELECIONADO}_$(date +%Y%m%d_%H%M%S).tar.gz"
 
-        mapfile -t CAMINHOS_BACKUP < <(tar -tzf "$ARQUIVO_SELECIONADO" | cut -d/ -f1 | sort -u)
+        # Usa as raízes reais gravadas no backup (ex.: "etc/", "root/scripts/"),
+        # não só o primeiro componente do caminho — senão um perfil que inclui
+        # ~/scripts (root/scripts/...) faria o preventivo copiar o /root INTEIRO
+        # (incluindo backups anteriores dentro dele, crescendo a cada execução).
+        mapfile -t TODOS_DIRS < <(tar -tzf "$ARQUIVO_SELECIONADO" | grep '/$')
+        RAIZES=()
+        for d in "${TODOS_DIRS[@]}"; do
+            aninhado=0
+            for outro in "${TODOS_DIRS[@]}"; do
+                [ "$d" = "$outro" ] && continue
+                case "$d" in
+                    "$outro"*) aninhado=1; break ;;
+                esac
+            done
+            [ "$aninhado" -eq 0 ] && RAIZES+=("${d%/}")
+        done
+
         CAMINHOS_EXISTENTES=()
-        for c in "${CAMINHOS_BACKUP[@]}"; do
-            [ -e "/$c" ] && CAMINHOS_EXISTENTES+=("/$c")
+        for r in "${RAIZES[@]}"; do
+            [ -e "/$r" ] && CAMINHOS_EXISTENTES+=("$r")
         done
 
         if [ "${#CAMINHOS_EXISTENTES[@]}" -gt 0 ]; then
             log_info "Criando backup preventivo do estado atual em: $SAFETY_TAR"
-            tar -czf "$SAFETY_TAR" -C / "${CAMINHOS_EXISTENTES[@]#/}" 2>/dev/null || true
+            # --exclude é defesa extra: mesmo com as raízes já filtradas acima,
+            # nunca deixa o preventivo engolir a si mesmo (backups_sistema).
+            tar -czf "$SAFETY_TAR" --exclude="${DESTINO_BASE#/}" -C / "${CAMINHOS_EXISTENTES[@]}" 2>/dev/null || true
             log_ok "Backup preventivo salvo. Em caso de problema, restaure-o manualmente com: tar -xzf $SAFETY_TAR -C /"
         fi
         ;;
