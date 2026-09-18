@@ -15,7 +15,9 @@ lib/common.sh    funções compartilhadas (log, require_root, detect_real_user, 
 install.sh       instala os scripts em ~/scripts (flat), compatível com o painel e crontabs
 ```
 
-Cada categoria tem seu próprio `README.md` com detalhes de uso.
+Cada categoria tem seu próprio `README.md` com detalhes de uso. Para a documentação completa de
+cada script (o que faz, parâmetros, variáveis de ambiente, o que altera no sistema), veja
+[docs/SCRIPTS.md](docs/SCRIPTS.md).
 
 ## Instalação
 
