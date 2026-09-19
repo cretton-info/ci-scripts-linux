@@ -229,28 +229,35 @@ sudo ~/scripts/setup_pos_instalacao.sh
 
 ## provisioning/inventario_universal.sh
 
-**O que faz:** inventário somente-leitura de hardware e sistema operacional — hostname, SO, kernel,
-CPU, memória, slots de RAM (ocupados/livres), discos/partições, interfaces de rede, versões de
-runtimes relevantes (Docker, git, Python, Node) e presença de apps desktop (Obsidian, VS Code,
-Antigravity, Wine).
+**O que faz:** inventário de hardware e sistema operacional — hostname, modelo da máquina, SO,
+kernel, CPU, memória, slots de RAM (ocupados/livres), placa-mãe, BIOS, discos/partições, interfaces
+de rede, versões de runtimes relevantes (Docker, git, Python, Node) e presença de apps desktop.
+Mostra tudo no terminal **e grava dois relatórios em Markdown**.
 
-**Requisitos:** nenhum privilégio especial, exceto para a seção de slots de memória (`dmidecode`
-precisa de root — sem `sudo` essa seção mostra um aviso e o resto do inventário roda normal).
+**Requisitos:** nenhum privilégio especial para a exibição básica; modelo da máquina, placa-mãe,
+BIOS e slots de memória exigem root (`dmidecode`) — sem `sudo` essas seções mostram um aviso e caem
+em fallback (modelo = hostname) sem travar o resto.
 
 **Uso:**
 
 ```bash
-bash ~/scripts/inventario_universal.sh          # tudo, exceto slots de RAM
-sudo ~/scripts/inventario_universal.sh          # inclui slots de RAM
+bash ~/scripts/inventario_universal.sh          # sem modelo/placa-mãe/BIOS/slots de RAM
+sudo ~/scripts/inventario_universal.sh          # inventário completo
 ```
+
+**O que grava no sistema:** a cada execução, sobrescreve
+`~/inventario/hardware_<modelo>.md` e `~/inventario/software_<modelo>.md` — `<modelo>` é a primeira
+palavra do `dmidecode -s system-product-name` (ou o hostname, sem `sudo` ou sem dados de BIOS). Os
+arquivos ficam na home do usuário real, mesmo rodando com `sudo` (`chown` de volta pro usuário real
+no fim). Útil para levar pro Obsidian ou documentar o estado de uma máquina de cliente.
 
 **Detecção de apps desktop:** a lista de apps vem de `apps.conf` (instalado junto em
 `~/scripts/apps.conf`, formato `Nome|termo de busca|comando1,comando2,...` documentado no próprio
 arquivo). Para cada app, verifica nesta ordem — comando no `PATH`, pacote `apt`, `flatpak`, `snap`,
 atalho `.desktop` em `/usr/share/applications` ou `~/.local/share/applications` — e para no primeiro
-método que encontrar. Se `apps.conf` não existir, cai para uma lista padrão embutida (Obsidian, VS
-Code, Antigravity, Wine). **Uma reinstalação (`install.sh`) nunca sobrescreve um `apps.conf` já
-existente** — edite-o livremente para adicionar/remover apps.
+método que encontrar. Se `apps.conf` não existir, cai para uma lista padrão embutida reduzida
+(Obsidian, VS Code, Antigravity, Wine). **Uma reinstalação (`install.sh`) nunca sobrescreve um
+`apps.conf` já existente** — edite-o livremente para adicionar/remover apps.
 
 **Slots de memória:** usa `dmidecode -t 17`, contando entradas "Memory Device" (total de slots) e
 quantas têm `Size: No Module Installed` (slots livres). Em VMs sem BIOS/firmware completo, o
