@@ -2,7 +2,7 @@
 
 | Script | Descrição |
 |---|---|
-| `manutencao_avancada.sh` | Atualiza pacotes, remove dependências não usadas, limita logs do journal (200MB/30 dias) e limpa recursos Docker não utilizados (`docker system prune`). Requer `sudo`. |
+| `manutencao_avancada.sh` | Rotina completa de manutenção (9 etapas): `apt full-upgrade`, correção de pacotes quebrados, `autoremove --purge`, limpeza do journal, Flatpak, Snap, Docker (com confirmação), lixeira/miniaturas do usuário, TRIM de SSD, e verificação de reboot pendente ao final. Requer `sudo`. |
 
 ## Uso
 
@@ -18,5 +18,13 @@ sudo ~/scripts/manutencao_avancada.sh --yes
 # ou
 AUTO_YES=1 sudo -E ~/scripts/manutencao_avancada.sh
 ```
+
+**Etapas puladas automaticamente se a ferramenta não estiver instalada:** Flatpak, Snap, Docker,
+`fstrim`. Nada trava por falta de uma delas.
+
+**Variáveis de ambiente:**
+
+- `JOURNAL_MAX_SIZE` — tamanho máximo dos logs do journal (padrão: `200M`)
+- `JOURNAL_MAX_AGE` — idade máxima dos logs do journal (padrão: `30d`)
 
 Bom candidato para rodar semanalmente via cron em VPS/home lab (com `--yes`).
