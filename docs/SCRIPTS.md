@@ -143,8 +143,9 @@ sudo tar -xzf ~/backups_sistema/_seguranca_pre_restauracao/pre_restore_<perfil>_
 
 ## monitoring/health_check.sh
 
-**O que faz:** raio-x rápido de saúde do sistema — uptime/carga, memória, disco, top 5 processos por
-CPU, serviços `systemd` falhando e status de contêineres Docker.
+**O que faz:** raio-x rápido de saúde do sistema — modelo de CPU, uptime/carga, memória, disco, top 5
+processos por CPU, top 5 processos por RAM, conectividade com a internet e resolução DNS, serviços
+`systemd` falhando e status de contêineres Docker.
 
 **Requisitos:** nenhum privilégio especial (mas ver Docker abaixo).
 
@@ -159,6 +160,10 @@ LIMIAR_DISCO=90 LIMIAR_MEM=95 bash ~/scripts/health_check.sh
 
 - `LIMIAR_DISCO` — percentual de uso de disco a partir do qual a partição é destacada em vermelho (padrão: `85`).
 - `LIMIAR_MEM` — reservado para uso futuro de destaque de memória (padrão: `90`; hoje a seção de memória não aplica destaque).
+
+**Conectividade:** testa `ping` para `1.1.1.1` (internet por IP) e `google.com` (resolução DNS),
+2 tentativas de 2s cada. Falha aqui pode ser rede real ou um ambiente que bloqueia ICMP (ex.:
+firewall corporativo, sandbox restrita) — não é necessariamente um problema na máquina.
 
 **Observações:**
 

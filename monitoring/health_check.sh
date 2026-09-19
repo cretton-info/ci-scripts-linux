@@ -16,6 +16,13 @@ echo "=========================================================="
 echo " 🔍 SAÚDE DO SISTEMA — $(hostname) — $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=========================================================="
 
+echo -e "\n💻 CPU:"
+MODELO_CPU=$(grep -m1 'model name' /proc/cpuinfo | cut -d':' -f2 | xargs)
+if [ -z "$MODELO_CPU" ] && has_cmd lscpu; then
+    MODELO_CPU=$(lscpu | grep 'Model name:' | cut -d':' -f2 | xargs)
+fi
+echo "  Modelo: ${MODELO_CPU:-$(uname -m)}"
+
 echo -e "\n⏱️  Uptime / Carga:"
 uptime
 
@@ -34,6 +41,21 @@ done
 
 echo -e "\n🧠 Top 5 processos por uso de CPU:"
 ps -eo pid,comm,%cpu,%mem --sort=-%cpu | head -n 6
+
+echo -e "\n📊 Top 5 processos por uso de RAM:"
+ps -eo pid,comm,%cpu,%mem --sort=-%mem | head -n 6
+
+echo -e "\n🌐 Conectividade de Rede:"
+if ping -c 2 -W 2 1.1.1.1 &>/dev/null; then
+    log_ok "Conexão com a internet (IP): OK"
+else
+    log_warn "Conexão com a internet (IP): FALHA"
+fi
+if ping -c 2 -W 2 google.com &>/dev/null; then
+    log_ok "Resolução DNS: OK"
+else
+    log_warn "Resolução DNS: FALHA"
+fi
 
 echo -e "\n🛠️  Serviços systemd falhando:"
 if has_cmd systemctl; then
