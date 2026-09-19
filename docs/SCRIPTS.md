@@ -270,8 +270,9 @@ diagnóstico rápido remoto.
 
 ## maintenance/manutencao_avancada.sh
 
-**O que faz:** rotina de manutenção e limpeza — atualização de pacotes, remoção de dependências não
-usadas, limite de tamanho dos logs do `journal` e limpeza de recursos Docker não utilizados.
+**O que faz:** rotina completa de manutenção e limpeza — atualização e correção de pacotes,
+limpeza de Flatpak/Snap/Docker, lixeira/cache do usuário, TRIM de SSD e verificação de reboot
+pendente.
 
 **Requisitos:** **sempre roda com `sudo`**.
 
@@ -283,19 +284,34 @@ sudo ~/scripts/manutencao_avancada.sh --yes    # sem confirmação (cron)
 AUTO_YES=1 sudo -E ~/scripts/manutencao_avancada.sh   # equivalente ao --yes
 ```
 
-**O que faz, em ordem:**
+**O que faz, em ordem (9 etapas):**
 
-1. `apt-get update && apt-get upgrade`.
-2. `apt-get autoremove && apt-get autoclean`.
-3. `journalctl --vacuum-size=200M --vacuum-time=30d`.
-4. **Pede confirmação** (mostra `docker system df` antes) e, se confirmado, roda
+1. `apt-get update && apt-get full-upgrade` — não aborta se um repositório de terceiros falhar.
+2. `apt-get install -f && apt-get check` — corrige dependências quebradas.
+3. `apt-get autoremove --purge && apt-get autoclean`.
+4. `journalctl --vacuum-size=$JOURNAL_MAX_SIZE --vacuum-time=$JOURNAL_MAX_AGE`.
+5. `flatpak uninstall --unused` — só se o Flatpak estiver instalado.
+6. Limpa cache do Snap (`/var/lib/snapd/cache`) e remove revisões desabilitadas — só se o Snap
+   estiver instalado.
+7. **Pede confirmação** (mostra `docker system df` antes) e, se confirmado, roda
    `docker system prune -f` — remove imagens, redes e cache de build não usados por nenhum
    contêiner em execução. **Não afeta contêineres nem volumes ativos.**
-5. `apt-get clean`.
-6. Mostra espaço livre em `/` antes e depois.
+8. Limpa `~/.local/share/Trash` e `~/.cache/thumbnails` do usuário real.
+9. `fstrim -av` — só se o comando existir; ignora silenciosamente discos que não suportam TRIM.
+
+No final: `apt-get clean`, espaço livre em `/` antes/depois, memória, e um aviso se
+`/var/run/reboot-required` existir (atualização de kernel/lib crítica pendente).
+
+**Etapas puladas automaticamente** (sem travar) se a ferramenta não estiver instalada: Flatpak,
+Snap, Docker, `fstrim`, `journalctl`.
+
+**Variáveis de ambiente:**
+
+- `JOURNAL_MAX_SIZE` — tamanho máximo dos logs do journal (padrão: `200M`).
+- `JOURNAL_MAX_AGE` — idade máxima dos logs do journal (padrão: `30d`).
 
 **Variáveis/flags para uso não-interativo (cron):** `--yes`, `-y` ou `AUTO_YES=1` pulam a
-confirmação do passo 4.
+confirmação da etapa 7 (Docker).
 
 ---
 
