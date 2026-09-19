@@ -101,9 +101,19 @@ detectar_app() {
 }
 
 echo -e "\n🖊️  Aplicativos Desktop:"
-printf "  %-13s %s\n" "Obsidian:" "$(detectar_app obsidian obsidian)"
-printf "  %-13s %s\n" "VS Code:" "$(detectar_app code code code-insiders)"
-printf "  %-13s %s\n" "Antigravity:" "$(detectar_app antigravity antigravity)"
-printf "  %-13s %s\n" "Wine:" "$(detectar_app wine wine wine64)"
+APPS_CONF="${APPS_CONF:-${SCRIPT_DIR}/apps.conf}"
+if [ -f "$APPS_CONF" ]; then
+    while IFS='|' read -r nome termo comandos; do
+        [[ -z "$nome" || "$nome" =~ ^[[:space:]]*# ]] && continue
+        IFS=',' read -r -a cmds <<< "$comandos"
+        printf "  %-13s %s\n" "${nome}:" "$(detectar_app "$termo" "${cmds[@]}")"
+    done < "$APPS_CONF"
+else
+    log_warn "apps.conf não encontrado em $APPS_CONF, usando lista padrão embutida."
+    printf "  %-13s %s\n" "Obsidian:" "$(detectar_app obsidian obsidian)"
+    printf "  %-13s %s\n" "VS Code:" "$(detectar_app code code code-insiders)"
+    printf "  %-13s %s\n" "Antigravity:" "$(detectar_app antigravity antigravity)"
+    printf "  %-13s %s\n" "Wine:" "$(detectar_app wine wine wine64)"
+fi
 
 echo -e "\n=========================================================="

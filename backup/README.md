@@ -40,3 +40,15 @@ arquivo e falha na hora, em vez de deixar um backup ruim para trás.
 O `restaurar_backup.sh` confere esse checksum antes de tocar em qualquer coisa e recusa restaurar um
 backup que não bate. Backups antigos sem `.sha256` (de antes dessa verificação existir) caem
 automaticamente para um teste de leitura do `tar` como fallback.
+
+## Exclusão de padrões
+
+O backup já exclui automaticamente `.git`, `node_modules`, `__pycache__` e `.cache` de qualquer
+origem incluída. Para excluir padrões extras (ex.: logs, caches específicos de um cliente), use
+`EXCLUDE_PATTERNS` com padrões separados por vírgula:
+
+```bash
+EXCLUDE_PATTERNS="*.log,tmp/*" sudo -E ~/scripts/backup_multiperfil.sh homelab
+```
+
+(`sudo -E` é necessário para a variável de ambiente passar para o processo com privilégio.)

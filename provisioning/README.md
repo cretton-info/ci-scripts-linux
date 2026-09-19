@@ -13,6 +13,8 @@ bash ~/scripts/inventario_universal.sh          # sem sudo: tudo menos slots de 
 sudo ~/scripts/inventario_universal.sh          # com sudo: inclui slots de RAM (via dmidecode)
 ```
 
-A detecção de apps desktop (Obsidian, VS Code, Antigravity, Wine) verifica comando no PATH, pacote
-apt, flatpak, snap e atalho `.desktop` — cobre as formas mais comuns de instalação. Slots de memória
-usam `dmidecode -t 17` e exigem root; em VMs sem BIOS/firmware completo pode não retornar dados.
+A lista de apps verificados vem de `apps.conf` (instalado junto em `~/scripts/apps.conf`) — edite
+esse arquivo para adicionar/remover apps sem tocar no script. Uma reinstalação (`install.sh`) nunca
+sobrescreve um `apps.conf` já existente. Cada app é checado por comando no PATH, pacote apt, flatpak,
+snap e atalho `.desktop`, nessa ordem. Slots de memória usam `dmidecode -t 17` e exigem root; em VMs
+sem BIOS/firmware completo pode não retornar dados.

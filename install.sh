@@ -21,6 +21,18 @@ for dir in backup monitoring provisioning maintenance panel; do
         [ -e "$f" ] || continue
         cp -v "$f" "$DEST/"
     done
+    # Arquivos de configuração (ex.: apps.conf) só são copiados se ainda não
+    # existirem no destino, para não sobrescrever customizações do usuário
+    # numa reinstalação.
+    for f in "${SCRIPT_DIR}/${dir}"/*.conf; do
+        [ -e "$f" ] || continue
+        dest_f="$DEST/$(basename "$f")"
+        if [ -e "$dest_f" ]; then
+            log_info "Mantendo $(basename "$f") existente em $DEST (edite manualmente se quiser atualizar)."
+        else
+            cp -v "$f" "$DEST/"
+        fi
+    done
 done
 
 chmod +x "$DEST"/*.sh

@@ -27,7 +27,10 @@ Opções de Perfil de Backup:
   --menu       Exibe o menu interativo para seleção
 
 Variáveis de ambiente:
-  RETENCAO_DIAS  Dias de retenção dos backups antigos (padrão: 7)
+  RETENCAO_DIAS     Dias de retenção dos backups antigos (padrão: 7)
+  EXCLUDE_PATTERNS  Padrões extras a excluir do backup, separados por vírgula
+                    (ex.: "*.log,cache/*"). Somados aos padrões padrão:
+                    .git, node_modules, __pycache__, .cache
 EOF
 }
 
@@ -97,11 +100,23 @@ if [ "${#ORIGEM_VALIDA[@]}" -eq 0 ]; then
     die "Nenhum dos diretórios especificados para o perfil '$NOME_PERFIL' existe neste sistema."
 fi
 
-# 2. Compactação
+# 2. Compactação (com exclusão de lixo comum + padrões extras do usuário)
+EXCLUDE_PADRAO=(".git" "node_modules" "__pycache__" ".cache")
+IFS=',' read -r -a EXCLUDE_EXTRA <<< "${EXCLUDE_PATTERNS:-}"
+TAR_EXCLUDE_ARGS=()
+for pat in "${EXCLUDE_PADRAO[@]}" "${EXCLUDE_EXTRA[@]}"; do
+    [ -n "$pat" ] && TAR_EXCLUDE_ARGS+=(--exclude="$pat")
+done
+
 log_info "Diretórios incluídos: ${ORIGEM_VALIDA[*]}"
+if [ -n "${EXCLUDE_PATTERNS:-}" ]; then
+    log_info "Padrões excluídos: ${EXCLUDE_PADRAO[*]} ${EXCLUDE_EXTRA[*]}"
+else
+    log_info "Padrões excluídos: ${EXCLUDE_PADRAO[*]}"
+fi
 log_info "Criando arquivo: $ARQUIVO_FINAL"
 
-tar -czf "$ARQUIVO_FINAL" "${ORIGEM_VALIDA[@]}" 2>/dev/null
+tar -czf "$ARQUIVO_FINAL" "${TAR_EXCLUDE_ARGS[@]}" "${ORIGEM_VALIDA[@]}" 2>/dev/null
 TAR_EXIT=$?
 
 # Códigos 0 (sucesso) e 1 (arquivos alterados durante leitura) são válidos
