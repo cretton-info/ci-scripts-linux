@@ -8,11 +8,12 @@ provisionamento, manutenção e um painel central de acesso.
 ```
 backup/          backup_multiperfil.sh, restaurar_backup.sh
 monitoring/      health_check.sh, network_scanner.sh
-provisioning/    setup_pos_instalacao.sh, inventario_universal.sh
+provisioning/    setup_pos_instalacao.sh, inventario_universal.sh, apps.conf
 maintenance/     manutencao_avancada.sh
 panel/           painel.sh (menu central)
 lib/common.sh    funções compartilhadas (log, require_root, detect_real_user, confirm)
 install.sh       instala os scripts em ~/scripts (flat), compatível com o painel e crontabs
+docs/SCRIPTS.md  referência detalhada de cada script
 ```
 
 Cada categoria tem seu próprio `README.md` com detalhes de uso. Para a documentação completa de
@@ -44,6 +45,18 @@ painel
 - Scripts que alteram o sistema (provisionamento, manutenção, restauração) exigem `sudo` e falham
   cedo se rodados sem privilégio.
 - Arrays em vez de strings com word-splitting para listas de caminhos/portas.
+
+## Destaques
+
+- **Backup verificado**: todo backup ganha um checksum SHA-256 na criação; a restauração confere
+  esse checksum antes de tocar em qualquer arquivo e recusa restaurar um backup corrompido.
+- **Backup preventivo automático**: restaurar no modo "locais originais" salva o estado atual antes
+  de sobrescrever, para permitir reverter.
+- **Exclusão de lixo no backup**: `.git`, `node_modules`, `__pycache__` e `.cache` ficam de fora por
+  padrão; padrões extras via `EXCLUDE_PATTERNS`.
+- **Inventário configurável**: apps desktop verificados (`inventario_universal.sh`) vêm de
+  `apps.conf`, editável sem tocar no script; sobrevive a reinstalações.
+- **Provisionamento resiliente**: um PPA de terceiro fora do ar não aborta o provisionamento inteiro.
 
 ## Logs automáticos
 
