@@ -69,6 +69,9 @@ sudo ~/scripts/backup_multiperfil.sh --help       # ajuda
 **Variáveis de ambiente:**
 
 - `RETENCAO_DIAS` — dias de retenção antes de apagar backups antigos do mesmo perfil (padrão: `7`).
+- `EXCLUDE_PATTERNS` — padrões extras a excluir do `.tar.gz`, separados por vírgula (ex.:
+  `"*.log,tmp/*"`), somados aos padrões padrão sempre excluídos: `.git`, `node_modules`,
+  `__pycache__`, `.cache`. Use `sudo -E` para a variável chegar ao processo com privilégio.
 
 **O que grava no sistema:**
 
@@ -241,9 +244,13 @@ bash ~/scripts/inventario_universal.sh          # tudo, exceto slots de RAM
 sudo ~/scripts/inventario_universal.sh          # inclui slots de RAM
 ```
 
-**Detecção de apps desktop:** para cada app (Obsidian, VS Code, Antigravity, Wine), verifica nesta
-ordem — comando no `PATH`, pacote `apt`, `flatpak`, `snap`, atalho `.desktop` em
-`/usr/share/applications` ou `~/.local/share/applications` — e para no primeiro método que encontrar.
+**Detecção de apps desktop:** a lista de apps vem de `apps.conf` (instalado junto em
+`~/scripts/apps.conf`, formato `Nome|termo de busca|comando1,comando2,...` documentado no próprio
+arquivo). Para cada app, verifica nesta ordem — comando no `PATH`, pacote `apt`, `flatpak`, `snap`,
+atalho `.desktop` em `/usr/share/applications` ou `~/.local/share/applications` — e para no primeiro
+método que encontrar. Se `apps.conf` não existir, cai para uma lista padrão embutida (Obsidian, VS
+Code, Antigravity, Wine). **Uma reinstalação (`install.sh`) nunca sobrescreve um `apps.conf` já
+existente** — edite-o livremente para adicionar/remover apps.
 
 **Slots de memória:** usa `dmidecode -t 17`, contando entradas "Memory Device" (total de slots) e
 quantas têm `Size: No Module Installed` (slots livres). Em VMs sem BIOS/firmware completo, o
@@ -337,3 +344,7 @@ sudo ./install.sh
 os scripts num caminho fixo e plano (`~/scripts/nome.sh`), então o `install.sh` reproduz essa
 estrutura a partir das subpastas do repositório (`backup/`, `monitoring/`, etc.), mantendo
 compatibilidade mesmo com automações configuradas antes da reorganização em categorias.
+
+**Arquivos de configuração (`*.conf`, ex.: `apps.conf`):** também são copiados para `~/scripts/`,
+mas **só na primeira instalação** — se o arquivo já existir no destino, o `install.sh` não
+sobrescreve, para preservar customizações feitas depois da instalação.
