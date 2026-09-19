@@ -227,16 +227,27 @@ sudo ~/scripts/setup_pos_instalacao.sh
 ## provisioning/inventario_universal.sh
 
 **O que faz:** inventário somente-leitura de hardware e sistema operacional — hostname, SO, kernel,
-CPU, memória, discos/partições, interfaces de rede e versões de runtimes relevantes (Docker, git,
-Python, Node).
+CPU, memória, slots de RAM (ocupados/livres), discos/partições, interfaces de rede, versões de
+runtimes relevantes (Docker, git, Python, Node) e presença de apps desktop (Obsidian, VS Code,
+Antigravity, Wine).
 
-**Requisitos:** nenhum privilégio especial.
+**Requisitos:** nenhum privilégio especial, exceto para a seção de slots de memória (`dmidecode`
+precisa de root — sem `sudo` essa seção mostra um aviso e o resto do inventário roda normal).
 
 **Uso:**
 
 ```bash
-bash ~/scripts/inventario_universal.sh
+bash ~/scripts/inventario_universal.sh          # tudo, exceto slots de RAM
+sudo ~/scripts/inventario_universal.sh          # inclui slots de RAM
 ```
+
+**Detecção de apps desktop:** para cada app (Obsidian, VS Code, Antigravity, Wine), verifica nesta
+ordem — comando no `PATH`, pacote `apt`, `flatpak`, `snap`, atalho `.desktop` em
+`/usr/share/applications` ou `~/.local/share/applications` — e para no primeiro método que encontrar.
+
+**Slots de memória:** usa `dmidecode -t 17`, contando entradas "Memory Device" (total de slots) e
+quantas têm `Size: No Module Installed` (slots livres). Em VMs sem BIOS/firmware completo, o
+`dmidecode` pode não retornar dados mesmo como root — o script avisa e segue sem travar.
 
 Útil para documentar o estado de uma máquina de cliente na entrada de um contrato, ou para
 diagnóstico rápido remoto.
