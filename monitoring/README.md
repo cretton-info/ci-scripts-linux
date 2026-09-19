@@ -2,7 +2,7 @@
 
 | Script | Descrição |
 |---|---|
-| `health_check.sh` | Saúde geral: uptime/carga, memória, disco (destaca partições acima do limiar), top processos por CPU, serviços systemd falhando e status de contêineres Docker. |
+| `health_check.sh` | Saúde geral: modelo de CPU, uptime/carga, memória, disco (destaca partições acima do limiar), top 5 processos por CPU e por RAM, conectividade/DNS, serviços systemd falhando e status de contêineres Docker. |
 | `network_scanner.sh` | Descobre hosts ativos na sub-rede local (ping sweep paralelo) e testa portas comuns (22, 80, 443, 3389, 8080, 8443). |
 
 ## Uso
