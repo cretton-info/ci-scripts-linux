@@ -12,6 +12,7 @@ provisioning/    setup_pos_instalacao.sh, inventario_universal.sh, apps.conf
 maintenance/     manutencao_avancada.sh
 panel/           painel.sh (menu central)
 lib/common.sh    funções compartilhadas (log, require_root, detect_real_user, confirm)
+lib/logrotate.conf  regra de rotação dos logs, instalada automaticamente em /etc/logrotate.d
 install.sh       instala os scripts em ~/scripts (flat), compatível com o painel e crontabs
 docs/SCRIPTS.md  referência detalhada de cada script
 ```
@@ -69,18 +70,10 @@ terminal — não precisa de nenhuma configuração extra por script. Local, um 
 
 Para forçar outro local: `CI_LOG_DIR=/caminho sudo ~/scripts/manutencao_avancada.sh`.
 
-Os logs não têm rotação automática. Em VPS/cliente, cadastre um `logrotate` simples se o volume
-justificar:
-
-```
-/var/log/ci-scripts-linux/*.log {
-    weekly
-    rotate 8
-    compress
-    missingok
-    notifempty
-}
-```
+**Rotação automática:** rodando `sudo ./install.sh`, a regra de rotação (`lib/logrotate.conf`) é
+instalada em `/etc/logrotate.d/ci-scripts-linux` automaticamente — o `logrotate` do sistema (já roda
+diariamente sozinho) cuida do resto. Numa reinstalação, um `logrotate.d/ci-scripts-linux` já existente
+nunca é sobrescrito.
 
 ## CI
 

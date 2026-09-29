@@ -163,17 +163,27 @@ LIMIAR_DISCO=90 LIMIAR_MEM=95 bash ~/scripts/health_check.sh
 
 **Variáveis de ambiente:**
 
-- `LIMIAR_DISCO` — percentual de uso de disco a partir do qual a partição é destacada em vermelho (padrão: `85`).
-- `LIMIAR_MEM` — reservado para uso futuro de destaque de memória (padrão: `90`; hoje a seção de memória não aplica destaque).
+- `LIMIAR_DISCO` — percentual de uso de disco a partir do qual a partição é destacada em vermelho e dispara alerta (padrão: `85`).
+- `LIMIAR_MEM` — percentual de uso de memória a partir do qual dispara alerta (padrão: `90`).
+- `WEBHOOK_URL` — se definida, envia um `POST` em JSON pra essa URL quando disco/memória passam do limiar ou há serviço `systemd` em falha (vazio por padrão — nenhum alerta é enviado).
+- `ALERTA_COOLDOWN_HORAS` — intervalo mínimo entre alertas do mesmo motivo, pra não repetir o mesmo aviso a cada execução enquanto o problema persiste (padrão: `6`).
 
 **Conectividade:** testa `ping` para `1.1.1.1` (internet por IP) e `google.com` (resolução DNS),
 2 tentativas de 2s cada. Falha aqui pode ser rede real ou um ambiente que bloqueia ICMP (ex.:
 firewall corporativo, sandbox restrita) — não é necessariamente um problema na máquina.
 
+**Alerta via webhook:** payload `{"hostname":"...","motivo":"...","detalhe":"...","data":"..."}`,
+um alerta por partição/serviço/memória que estourar o limiar. O cooldown é guardado por motivo em
+arquivos dentro da mesma pasta do log automático (`<pasta-do-log>/alertas/<motivo>.last`) — some
+junto se você limpar os logs manualmente. Se `WEBHOOK_URL` estiver definida mas `curl` não existir,
+ou a URL estiver fora do ar, o script avisa (`log_warn`) e segue sem travar. Só é útil de verdade
+rodando via cron (ver `monitoring/README.md`) — chamado manualmente, o alerta só sai na hora que você
+rodou.
+
 **Observações:**
 
 - Se rodado sem permissão de acessar o socket do Docker, mostra `[WARN]` em vez de travar.
-- Não grava nada no sistema — só leitura e exibição.
+- Não grava nada no sistema — só leitura e exibição (exceto os arquivos de cooldown do webhook, se usado).
 
 ---
 
@@ -381,3 +391,7 @@ compatibilidade mesmo com automações configuradas antes da reorganização em 
 **Arquivos de configuração (`*.conf`, ex.: `apps.conf`):** também são copiados para `~/scripts/`,
 mas **só na primeira instalação** — se o arquivo já existir no destino, o `install.sh` não
 sobrescreve, para preservar customizações feitas depois da instalação.
+
+**Rotação de logs:** se rodado como root e `/etc/logrotate.d` existir, instala
+`lib/logrotate.conf` em `/etc/logrotate.d/ci-scripts-linux` — mesma regra "só na primeira
+instalação" dos arquivos `.conf`, não sobrescreve uma versão já existente.
