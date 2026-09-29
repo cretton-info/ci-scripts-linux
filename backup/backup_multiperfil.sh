@@ -153,8 +153,10 @@ if [ -n "${RCLONE_REMOTO:-}" ]; then
     else
         RCLONE_DESTINO="${RCLONE_REMOTO%/}/${NOME_PERFIL}/"
         log_info "Enviando backup para remoto: $RCLONE_DESTINO"
+        # rclone copy aceita só um arquivo de origem por vez (dest é sempre um diretório aqui)
         # shellcheck disable=SC2086
-        if rclone copy "$ARQUIVO_FINAL" "$CHECKSUM_FINAL" "$RCLONE_DESTINO" ${RCLONE_FLAGS:-} 2>&1 | tee -a "${LOG_FILE:-/dev/null}"; then
+        if rclone copy "$ARQUIVO_FINAL" "$RCLONE_DESTINO" ${RCLONE_FLAGS:-} 2>&1 | tee -a "${LOG_FILE:-/dev/null}" \
+            && rclone copy "$CHECKSUM_FINAL" "$RCLONE_DESTINO" ${RCLONE_FLAGS:-} 2>&1 | tee -a "${LOG_FILE:-/dev/null}"; then
             log_ok "Backup enviado ao remoto: $RCLONE_DESTINO"
         else
             log_warn "Falha ao enviar backup ao remoto ($RCLONE_DESTINO) — backup local preservado."
