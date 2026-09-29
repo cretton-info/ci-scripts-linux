@@ -59,3 +59,35 @@ EXCLUDE_PATTERNS="*.log,tmp/*" sudo -E ~/scripts/backup_multiperfil.sh homelab
 ```
 
 (`sudo -E` é necessário para a variável de ambiente passar para o processo com privilégio.)
+
+## Backup remoto (rclone)
+
+Se `RCLONE_REMOTO` estiver definida, o `backup_multiperfil.sh` envia o `.tar.gz` e o `.sha256`
+recém-criados para esse destino logo após a verificação de integridade local, via
+[rclone](https://rclone.org/) (`rclone copy`, não apaga nada no remoto). Uma falha no envio só
+gera um aviso — o backup local já está garantido antes de tentar o remoto.
+
+```bash
+# Configura o remote uma vez (S3-compatível, SFTP, WebDAV, Google Drive, etc.)
+rclone config
+
+# Testa manualmente
+RCLONE_REMOTO="b2:meu-bucket/cliente-x" sudo -E ~/scripts/backup_multiperfil.sh homelab
+```
+
+No crontab:
+
+```
+0 3 * * * RCLONE_REMOTO="b2:meu-bucket/cliente-x" /home/<usuario>/scripts/backup_multiperfil.sh homelab > /dev/null 2>&1
+```
+
+O arquivo acaba em `<remote>/<perfil>/`, ex.: `b2:meu-bucket/cliente-x/homelab/`.
+
+Flags extras do rclone (ex.: `--transfers 4`) via `RCLONE_FLAGS`:
+
+```bash
+RCLONE_REMOTO="b2:meu-bucket/cliente-x" RCLONE_FLAGS="--transfers 4" sudo -E ~/scripts/backup_multiperfil.sh homelab
+```
+
+Requer o binário `rclone` instalado e configurado (`rclone config`) no mesmo usuário/root que roda
+o script — se não estiver instalado, o script apenas avisa e segue com o backup local normalmente.

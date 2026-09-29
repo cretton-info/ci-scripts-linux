@@ -72,6 +72,13 @@ sudo ~/scripts/backup_multiperfil.sh --help       # ajuda
 - `EXCLUDE_PATTERNS` — padrões extras a excluir do `.tar.gz`, separados por vírgula (ex.:
   `"*.log,tmp/*"`), somados aos padrões padrão sempre excluídos: `.git`, `node_modules`,
   `__pycache__`, `.cache`. Use `sudo -E` para a variável chegar ao processo com privilégio.
+- `RCLONE_REMOTO` — `remote:caminho` do [rclone](https://rclone.org/) (ex.: `"b2:bucket/cliente-x"`).
+  Se definida, envia o `.tar.gz` e o `.sha256` recém-criados para
+  `<RCLONE_REMOTO>/<perfil>/` via `rclone copy` logo após a verificação de integridade local.
+  Requer `rclone` instalado e configurado (`rclone config`); se o binário não existir, só avisa
+  (`log_warn`) e segue com o backup local. Falha no envio remoto não afeta o backup local nem a
+  rotação. Use `sudo -E` para a variável chegar ao processo com privilégio.
+- `RCLONE_FLAGS` — flags extras passadas ao `rclone copy` (ex.: `"--transfers 4"`).
 
 **O que grava no sistema:**
 
@@ -90,7 +97,8 @@ quanto numa VPS mínima.
 
 **Exit codes:** `1` se nenhuma das origens do perfil existir, ou se o `tar` falhar de verdade
 (códigos de saída do `tar` diferentes de `0` e `1` — `1` é tolerado porque significa apenas "algum
-arquivo mudou durante a leitura", comum em sistemas ativos).
+arquivo mudou durante a leitura", comum em sistemas ativos). Uma falha no envio remoto (rclone)
+**não** derruba o exit code — é só um `log_warn`.
 
 ---
 

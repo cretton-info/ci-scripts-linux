@@ -31,6 +31,10 @@ Variáveis de ambiente:
   EXCLUDE_PATTERNS  Padrões extras a excluir do backup, separados por vírgula
                     (ex.: "*.log,cache/*"). Somados aos padrões padrão:
                     .git, node_modules, __pycache__, .cache
+  RCLONE_REMOTO     Remote:caminho do rclone (ex.: "b2:meu-bucket/cliente-x").
+                    Se definido, envia o backup e o checksum recém-criados
+                    para lá após o backup local (requer rclone configurado).
+  RCLONE_FLAGS      Flags extras passadas ao rclone (ex.: "--fast-list").
 EOF
 }
 
@@ -142,7 +146,23 @@ log_ok "Integridade verificada. Checksum: $(basename "$CHECKSUM_FINAL")"
 
 chown -R "${REAL_USER}:${REAL_USER}" "$DESTINO_BASE"
 
-# 4. Rotação de Backups Antigos (específica por perfil)
+# 4. Envio remoto opcional via rclone (não derruba o backup local em caso de falha)
+if [ -n "${RCLONE_REMOTO:-}" ]; then
+    if ! has_cmd rclone; then
+        log_warn "RCLONE_REMOTO definido mas rclone não encontrado — envio remoto pulado."
+    else
+        RCLONE_DESTINO="${RCLONE_REMOTO%/}/${NOME_PERFIL}/"
+        log_info "Enviando backup para remoto: $RCLONE_DESTINO"
+        # shellcheck disable=SC2086
+        if rclone copy "$ARQUIVO_FINAL" "$CHECKSUM_FINAL" "$RCLONE_DESTINO" ${RCLONE_FLAGS:-} 2>&1 | tee -a "${LOG_FILE:-/dev/null}"; then
+            log_ok "Backup enviado ao remoto: $RCLONE_DESTINO"
+        else
+            log_warn "Falha ao enviar backup ao remoto ($RCLONE_DESTINO) — backup local preservado."
+        fi
+    fi
+fi
+
+# 5. Rotação de Backups Antigos (específica por perfil)
 log_info "Verificando retenção (removendo arquivos com mais de ${RETENCAO_DIAS} dias no perfil ${NOME_PERFIL})..."
 find "$DESTINO_FINAL" -maxdepth 1 \( -name "backup_${NOME_PERFIL}_*.tar.gz" -o -name "backup_${NOME_PERFIL}_*.tar.gz.sha256" \) -type f -mtime "+${RETENCAO_DIAS}" -print -delete
 
