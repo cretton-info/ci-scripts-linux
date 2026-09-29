@@ -130,6 +130,11 @@ O preventivo é calculado a partir das raízes reais do backup (ex.: `etc/`, `ro
 primeiro componente do caminho — isso evita que um perfil com um caminho dentro do home (como
 `~/scripts`) acabe copiando o diretório home inteiro.
 
+**Retenção dos preventivos:** depois de criar um novo preventivo, o script remove os anteriores
+(`pre_restore_*.tar.gz` em `~/backups_sistema/_seguranca_pre_restauracao/`) com mais de
+`RETENCAO_PREVENTIVOS_DIAS` dias (padrão: `30`) — sem isso, cada restauração no modo "locais
+originais" deixaria mais um arquivo acumulando pra sempre.
+
 **Para reverter uma restauração ruim:**
 
 ```bash

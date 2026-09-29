@@ -13,6 +13,7 @@ require_root
 detect_real_user
 
 DESTINO_BASE="${USER_HOME}/backups_sistema"
+RETENCAO_PREVENTIVOS_DIAS="${RETENCAO_PREVENTIVOS_DIAS:-30}"
 
 echo "=========================================================="
 echo " 🔄 ASSISTENTE DE RESTAURAÇÃO DE BACKUP "
@@ -144,6 +145,13 @@ case "$MODO_DESTINO" in
             # nunca deixa o preventivo engolir a si mesmo (backups_sistema).
             tar -czf "$SAFETY_TAR" --exclude="${DESTINO_BASE#/}" -C / "${CAMINHOS_EXISTENTES[@]}" 2>/dev/null || true
             log_ok "Backup preventivo salvo. Em caso de problema, restaure-o manualmente com: tar -xzf $SAFETY_TAR -C /"
+
+            # Retenção: preventivos são uma rede de segurança pontual, não um
+            # backup permanente — sem isso, cada restauração deixa mais um
+            # arquivo em _seguranca_pre_restauracao/ que nunca é removido.
+            log_info "Verificando retenção de preventivos (removendo com mais de ${RETENCAO_PREVENTIVOS_DIAS} dias)..."
+            find "$SAFETY_DIR" -maxdepth 1 -name "pre_restore_*.tar.gz" -type f \
+                -mtime "+${RETENCAO_PREVENTIVOS_DIAS}" -print -delete
         fi
         ;;
     2)

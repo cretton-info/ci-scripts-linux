@@ -3,7 +3,7 @@
 | Script | Descrição |
 |---|---|
 | `backup_multiperfil.sh` | Backup rotativo em `tar.gz` por perfil (`docs`, `homelab`, `scripts`, `tudo`), com retenção configurável (`RETENCAO_DIAS`, padrão 7 dias). |
-| `restaurar_backup.sh` | Restauração interativa de um backup, nos locais originais ou em diretório temporário para auditoria. Antes de sobrescrever o sistema, cria automaticamente um backup preventivo do estado atual em `~/backups_sistema/_seguranca_pre_restauracao/`. |
+| `restaurar_backup.sh` | Restauração interativa de um backup, nos locais originais ou em diretório temporário para auditoria. Antes de sobrescrever o sistema, cria automaticamente um backup preventivo do estado atual em `~/backups_sistema/_seguranca_pre_restauracao/`, com retenção própria (`RETENCAO_PREVENTIVOS_DIAS`, padrão 30 dias). |
 
 ## Uso
 
@@ -30,6 +30,13 @@ sudo ~/scripts/restaurar_backup.sh
 Restaurar no modo "locais originais" sobrescreve arquivos do sistema em `/`. O script sempre lista o
 conteúdo do backup e pede confirmação explícita antes de prosseguir, além de gerar um backup preventivo
 automático — mas revise o backup preventivo salvo antes de descartá-lo.
+
+Os preventivos em `~/backups_sistema/_seguranca_pre_restauracao/` são limpos automaticamente depois de
+`RETENCAO_PREVENTIVOS_DIAS` dias (padrão: 30). Para mudar:
+
+```bash
+RETENCAO_PREVENTIVOS_DIAS=60 sudo -E ~/scripts/restaurar_backup.sh
+```
 
 ## Verificação de integridade
 
