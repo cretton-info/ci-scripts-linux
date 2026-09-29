@@ -80,6 +80,8 @@ sudo ~/scripts/backup_multiperfil.sh --help       # ajuda
   rotação. Use `sudo -E` para a variável chegar ao processo com privilégio.
 - `RCLONE_FLAGS` — flags extras passadas ao `rclone copy` (ex.: `"--transfers 4"`).
 
+  Passo a passo completo de configuração (Google Drive): [docs/BACKUP_REMOTO.md](BACKUP_REMOTO.md).
+
 **O que grava no sistema:**
 
 - `~/backups_sistema/<perfil>/backup_<perfil>_<data>.tar.gz`

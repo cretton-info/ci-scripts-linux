@@ -15,6 +15,7 @@ lib/common.sh    funções compartilhadas (log, require_root, detect_real_user, 
 lib/logrotate.conf  regra de rotação dos logs, instalada automaticamente em /etc/logrotate.d
 install.sh       instala os scripts em ~/scripts (flat), compatível com o painel e crontabs
 docs/SCRIPTS.md  referência detalhada de cada script
+docs/BACKUP_REMOTO.md  passo a passo do backup remoto via rclone (Google Drive)
 ```
 
 Cada categoria tem seu próprio `README.md` com detalhes de uso. Para a documentação completa de

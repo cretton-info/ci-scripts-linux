@@ -91,3 +91,7 @@ RCLONE_REMOTO="b2:meu-bucket/cliente-x" RCLONE_FLAGS="--transfers 4" sudo -E ~/s
 
 Requer o binário `rclone` instalado e configurado (`rclone config`) no mesmo usuário/root que roda
 o script — se não estiver instalado, o script apenas avisa e segue com o backup local normalmente.
+
+**Passo a passo completo pra configurar o Google Drive** (criação do remote, autenticação sem
+navegador no servidor, restringir a uma pasta, criptografia opcional):
+[docs/BACKUP_REMOTO.md](../docs/BACKUP_REMOTO.md).
