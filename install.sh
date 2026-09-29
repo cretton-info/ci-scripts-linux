@@ -46,6 +46,17 @@ if [ "$EUID" -eq 0 ]; then
         ln -sf "$DEST/painel.sh" /usr/local/bin/painel
         log_ok "Atalho criado. Digite 'painel' em qualquer lugar do terminal para abrir o menu."
     fi
+
+    # Rotação dos logs automáticos: só instala se ainda não existir, para não
+    # sobrescrever uma customização feita depois da instalação.
+    if [ -d /etc/logrotate.d ]; then
+        if [ -e /etc/logrotate.d/ci-scripts-linux ]; then
+            log_info "Mantendo /etc/logrotate.d/ci-scripts-linux existente (edite manualmente se quiser atualizar)."
+        else
+            cp -v "${SCRIPT_DIR}/lib/logrotate.conf" /etc/logrotate.d/ci-scripts-linux
+            log_ok "Rotação de logs instalada em /etc/logrotate.d/ci-scripts-linux."
+        fi
+    fi
 else
-    log_warn "Rode com sudo para poder criar o atalho global 'painel' em /usr/local/bin."
+    log_warn "Rode com sudo para poder criar o atalho global 'painel' e instalar a rotação de logs."
 fi
