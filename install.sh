@@ -48,6 +48,23 @@ chown -R "${REAL_USER}:${REAL_USER}" "$DEST"
 
 log_ok "Scripts instalados em $DEST (versão: ${VERSAO:-desconhecida})"
 
+# Pergunta a pasta de destino do inventario_universal.sh uma unica vez por
+# host (nao sobrescreve numa reinstalacao, mesma logica do apps.conf acima).
+# So pergunta em terminal interativo, pra nao travar instalacao automatizada.
+INVENTARIO_CONF="$DEST/inventario.conf"
+if [ -e "$INVENTARIO_CONF" ]; then
+    log_info "Mantendo inventario.conf existente em $DEST (edite manualmente se quiser mudar a pasta de destino)."
+elif [ -t 0 ]; then
+    DEFAULT_INVENTARIO_DIR="${USER_HOME}/inventario"
+    read -r -p "Pasta de destino dos relatorios de inventario [${DEFAULT_INVENTARIO_DIR}]: " resp_dir
+    INVENTARIO_DIR="${resp_dir:-$DEFAULT_INVENTARIO_DIR}"
+    printf 'DIR_DESTINO="%s"\n' "$INVENTARIO_DIR" > "$INVENTARIO_CONF"
+    chown "${REAL_USER}:${REAL_USER}" "$INVENTARIO_CONF"
+    log_ok "Pasta de destino do inventario salva em $INVENTARIO_CONF: $INVENTARIO_DIR"
+else
+    log_warn "Instalacao nao-interativa: inventario.conf nao criado, inventario_universal.sh vai usar o padrao (~/inventario) ate ser configurado manualmente."
+fi
+
 if [ "$EUID" -eq 0 ]; then
     read -r -p "Criar atalho global 'painel' em /usr/local/bin? (s/N): " resp
     if [[ "$resp" =~ ^[Ss]$ ]]; then

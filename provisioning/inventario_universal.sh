@@ -10,7 +10,19 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "$(readlink -f "${BASH_SOURCE[0]}")")" &>/dev/n
 source "${SCRIPT_DIR}/../lib/common.sh" 2>/dev/null || source "${SCRIPT_DIR}/lib/common.sh"
 
 detect_real_user
-DIR_DESTINO="${USER_HOME}/inventario"
+
+# Resolucao do destino dos relatorios, em ordem de prioridade:
+# 1. Variavel de ambiente DIR_DESTINO (override pontual, ex: rodar manual)
+# 2. Arquivo inventario.conf ao lado do script (gravado pelo install.sh na
+#    instalacao, pergunta interativa uma unica vez por host)
+# 3. Padrao ~/inventario, se nada acima existir
+INVENTARIO_CONF="${SCRIPT_DIR}/inventario.conf"
+if [ -z "${DIR_DESTINO:-}" ] && [ -f "$INVENTARIO_CONF" ]; then
+    # shellcheck source=/dev/null
+    source "$INVENTARIO_CONF"
+fi
+DIR_DESTINO="${DIR_DESTINO:-${USER_HOME}/inventario}"
+mkdir -p "$DIR_DESTINO"
 
 MODO="texto"
 for arg in "$@"; do
