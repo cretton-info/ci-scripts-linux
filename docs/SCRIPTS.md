@@ -93,7 +93,16 @@ sudo ~/scripts/backup_multiperfil.sh --help       # ajuda
 - `~/backups_sistema/<perfil>/backup_<perfil>_<data>.tar.gz`
 - `~/backups_sistema/<perfil>/backup_<perfil>_<data>.tar.gz.sha256` — checksum gerado logo após a
   criação, usado pelo `restaurar_backup.sh` para detectar corrupção antes de restaurar.
+- `~/backups_sistema/.lock_<perfil>` — arquivo de lock (`flock`) usado só para evitar execuções
+  sobrepostas do mesmo perfil; fica vazio, não é um backup.
 - Apaga (`find ... -delete`) backups e checksums do mesmo perfil com mais de `RETENCAO_DIAS` dias.
+
+**Lock de concorrência:** antes de compactar, o script tenta um `flock` não bloqueante em
+`~/backups_sistema/.lock_<perfil>`. Se já houver uma execução do mesmo perfil em andamento (ex.:
+cron disparando de novo enquanto a anterior ainda está compactando uma origem grande), a nova
+execução aborta na hora em vez de rodar em paralelo e arriscar um `.tar.gz` corrompido. Perfis
+diferentes não bloqueiam um ao outro. Se `flock` não estiver disponível, o script avisa e segue sem
+proteção (não é um requisito, é uma camada extra de segurança).
 
 **Verificação de integridade:** depois de criar o `.tar.gz`, o script testa a leitura com
 `tar -tzf` e grava o checksum. Se o teste falhar, apaga o arquivo corrompido e encerra com erro —
