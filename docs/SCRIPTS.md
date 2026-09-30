@@ -576,3 +576,35 @@ sobrescreve, para preservar customizações feitas depois da instalação.
 **Rotação de logs:** se rodado como root e `/etc/logrotate.d` existir, instala
 `lib/logrotate.conf` em `/etc/logrotate.d/ci-scripts-linux` — mesma regra "só na primeira
 instalação" dos arquivos `.conf`, não sobrescreve uma versão já existente.
+
+---
+
+## update.sh
+
+**O que faz:** `git pull` + `install.sh` numa tacada só, pra atualizar uma máquina que já tem o
+repositório clonado e os scripts instalados.
+
+**Requisitos:** precisa ser rodado de dentro do checkout git (não de `~/scripts/`, que é a cópia
+plana sem histórico git). Pede senha de `sudo` na hora do `install.sh`, se não estiver rodando como
+root.
+
+**Uso:**
+
+```bash
+cd ci-scripts-linux   # o checkout git, não ~/scripts/
+./update.sh
+```
+
+**O que faz, em ordem:**
+
+1. Confere que está num checkout git (`.git` existe) — aborta com mensagem clara se não estiver.
+2. Avisa (sem abortar) se houver alterações locais não commitadas, já que isso pode fazer o
+   `git pull` falhar ou gerar conflito.
+3. `git pull`. Se falhar (conflito, rede, credenciais, branch sem upstream, etc.), aborta e mostra
+   a saída do próprio `git` pra você resolver manualmente.
+4. `sudo ./install.sh` (ou sem `sudo` se já estiver rodando como root). Se isso falhar, avisa
+   claramente que o repositório foi atualizado mas `~/scripts/` pode ter ficado com versões antigas
+   — não finge que deu tudo certo.
+
+**Exit codes:** `1` se não for um checkout git, se o `git pull` falhar, ou se o `install.sh`
+falhar; `0` só quando as duas etapas completam com sucesso.

@@ -49,7 +49,9 @@ ideias anotadas para não perder — implementar sob demanda.
 - ~~**Múltiplos destinos rclone simultâneos**~~ — feito: `RCLONE_REMOTO` aceita lista separada por
   vírgula, cada destino independente (falha num não impede os outros), alerta por destino via
   `alert_webhook`.
-- **`update.sh`** — `git pull` + `sudo ./install.sh` numa linha só.
+- ~~**`update.sh`**~~ — feito: `git pull` + `sudo ./install.sh`, com checagem de checkout git,
+  aviso de alterações não commitadas, e relato correto se o `install.sh` falhar depois do pull
+  (não finge sucesso).
 
 ## 📦 Distribuição / DX
 
