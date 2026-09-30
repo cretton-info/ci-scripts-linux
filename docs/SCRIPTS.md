@@ -24,6 +24,7 @@ Não é executado diretamente — é a biblioteca compartilhada que todo script 
 | `detect_real_user` | Preenche `REAL_USER` e `USER_HOME` com o usuário real por trás do `sudo` (usa `getent passwd`, não `eval`). |
 | `confirm "pergunta"` | Pergunta s/N interativa. Retorna 0 (sucesso) se a resposta for `s`/`S`. |
 | `has_cmd nome` | Retorna 0 se o comando `nome` existe no `PATH`. |
+| `alert_webhook "motivo" "detalhe"` | Envia um alerta em JSON para `WEBHOOK_URL` (se definida), com cooldown por motivo. Usado por qualquer script para reportar falhas — não faz nada se `WEBHOOK_URL` não estiver definida. |
 | `LOG_FILE` | Caminho do arquivo de log da execução atual (definido automaticamente ao sourcear). |
 
 **Log automático:** toda chamada a `log_warn`/`log_error`/`die` grava uma linha com timestamp e PID
@@ -40,6 +41,21 @@ o log guarda apenas avisos e erros.
 **Resolução de symlinks:** todos os scripts calculam seu próprio diretório com
 `readlink -f "${BASH_SOURCE[0]}"` antes de sourcear a lib, para funcionar corretamente mesmo quando
 chamados por um link simbólico (caso do atalho global `painel` em `/usr/local/bin`).
+
+**Alerta via webhook (`alert_webhook`):** função compartilhada usada por vários scripts para
+reportar falhas remotamente, sem duplicar a lógica em cada um. Não faz nada se `WEBHOOK_URL` não
+estiver definida.
+
+- Payload: `{"hostname":"...","script":"...","motivo":"...","detalhe":"...","data":"..."}` — `script`
+  é o nome do arquivo que chamou (ex.: `backup_multiperfil`), útil para distinguir a origem quando
+  vários scripts alertam pro mesmo webhook.
+- **Cooldown por motivo:** não reenvia o mesmo `motivo` antes de `ALERTA_COOLDOWN_HORAS` horas
+  (padrão: `6`) — evita spam se o problema persistir entre execuções. O estado fica em arquivos
+  `.last` dentro de `<diretório do log>/alertas/`, limpos manualmente se quiser resetar o cooldown.
+- Se `WEBHOOK_URL` estiver definida mas `curl` não existir, avisa e segue sem travar o script.
+- Quem chama hoje: `health_check.sh` (disco/memória/serviços), `backup_multiperfil.sh` (origem
+  ausente, tar falhou, backup corrompido), `restaurar_backup.sh` (checksum não confere, espaço
+  insuficiente) e `manutencao_avancada.sh` (falha grave de pacotes).
 
 ---
 
@@ -85,6 +101,8 @@ sudo ~/scripts/backup_multiperfil.sh --help       # ajuda
   (`log_warn`) e segue com o backup local. Falha no envio remoto não afeta o backup local nem a
   rotação. Use `sudo -E` para a variável chegar ao processo com privilégio.
 - `RCLONE_FLAGS` — flags extras passadas ao `rclone copy` (ex.: `"--transfers 4"`).
+- `WEBHOOK_URL` — se definida, alerta via [`alert_webhook`](#libcommonsh) quando não há nenhuma
+  origem válida para o perfil, o `tar` falha, ou o backup sai corrompido logo após a criação.
 
   Passo a passo completo de configuração (Google Drive): [docs/BACKUP_REMOTO.md](BACKUP_REMOTO.md).
 
@@ -175,6 +193,10 @@ interrompida pela metade por falta de espaço é pior que não restaurar nada, e
 **Exit codes:** `1` em qualquer seleção inválida (perfil, arquivo ou modo inexistente), espaço em
 disco insuficiente no destino, ou falha do `tar` na extração final.
 
+**Alerta via webhook:** se `WEBHOOK_URL` estiver definida, alerta via
+[`alert_webhook`](#libcommonsh) quando o checksum não confere (ou não é possível ler o backup) e
+quando falta espaço no destino.
+
 ---
 
 ## monitoring/health_check.sh
@@ -196,20 +218,17 @@ LIMIAR_DISCO=90 LIMIAR_MEM=95 bash ~/scripts/health_check.sh
 
 - `LIMIAR_DISCO` — percentual de uso de disco a partir do qual a partição é destacada em vermelho e dispara alerta (padrão: `85`).
 - `LIMIAR_MEM` — percentual de uso de memória a partir do qual dispara alerta (padrão: `90`).
-- `WEBHOOK_URL` — se definida, envia um `POST` em JSON pra essa URL quando disco/memória passam do limiar ou há serviço `systemd` em falha (vazio por padrão — nenhum alerta é enviado).
+- `WEBHOOK_URL` — se definida, alerta via [`alert_webhook`](#libcommonsh) quando disco/memória
+  passam do limiar ou há serviço `systemd` em falha (vazio por padrão — nenhum alerta é enviado).
 - `ALERTA_COOLDOWN_HORAS` — intervalo mínimo entre alertas do mesmo motivo, pra não repetir o mesmo aviso a cada execução enquanto o problema persiste (padrão: `6`).
 
 **Conectividade:** testa `ping` para `1.1.1.1` (internet por IP) e `google.com` (resolução DNS),
 2 tentativas de 2s cada. Falha aqui pode ser rede real ou um ambiente que bloqueia ICMP (ex.:
 firewall corporativo, sandbox restrita) — não é necessariamente um problema na máquina.
 
-**Alerta via webhook:** payload `{"hostname":"...","motivo":"...","detalhe":"...","data":"..."}`,
-um alerta por partição/serviço/memória que estourar o limiar. O cooldown é guardado por motivo em
-arquivos dentro da mesma pasta do log automático (`<pasta-do-log>/alertas/<motivo>.last`) — some
-junto se você limpar os logs manualmente. Se `WEBHOOK_URL` estiver definida mas `curl` não existir,
-ou a URL estiver fora do ar, o script avisa (`log_warn`) e segue sem travar. Só é útil de verdade
-rodando via cron (ver `monitoring/README.md`) — chamado manualmente, o alerta só sai na hora que você
-rodou.
+**Alerta via webhook:** um alerta por partição/serviço/memória que estourar o limiar, via
+`alert_webhook` (ver `lib/common.sh` acima para payload e cooldown). Só é útil de verdade rodando
+via cron (ver `monitoring/README.md`) — chamado manualmente, o alerta só sai na hora que você rodou.
 
 **Observações:**
 
@@ -365,6 +384,9 @@ Snap, Docker, `fstrim`, `journalctl`.
 
 - `JOURNAL_MAX_SIZE` — tamanho máximo dos logs do journal (padrão: `200M`).
 - `JOURNAL_MAX_AGE` — idade máxima dos logs do journal (padrão: `30d`).
+- `WEBHOOK_URL` — se definida, alerta via [`alert_webhook`](#libcommonsh) quando `apt-get
+  full-upgrade` ou `apt-get install -f` falham (etapas 1 e 2) — a manutenção não aborta nesses
+  casos, mas o alerta avisa que algo precisa de atenção manual.
 
 **Variáveis/flags para uso não-interativo (cron):** `--yes`, `-y` ou `AUTO_YES=1` pulam a
 confirmação da etapa 7 (Docker).

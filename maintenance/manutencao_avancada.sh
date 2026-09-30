@@ -28,10 +28,16 @@ DISCO_ANTES=$(df -h / | tail -n1 | awk '{print $4}')
 
 log_info "1/9. Atualizando pacotes do sistema (full-upgrade)..."
 apt-get update -y || log_warn "Alguns repositórios falharam ao atualizar, continuando com os que funcionaram."
-apt-get full-upgrade -y || log_warn "Falha ao atualizar alguns pacotes instalados, continuando a manutenção."
+if ! apt-get full-upgrade -y; then
+    log_warn "Falha ao atualizar alguns pacotes instalados, continuando a manutenção."
+    alert_webhook "manutencao_full_upgrade" "$(hostname): apt-get full-upgrade falhou durante a manutenção."
+fi
 
 log_info "2/9. Verificando e corrigindo pacotes quebrados..."
-apt-get install -f -y || log_warn "Falha ao corrigir dependências quebradas."
+if ! apt-get install -f -y; then
+    log_warn "Falha ao corrigir dependências quebradas."
+    alert_webhook "manutencao_deps_quebradas" "$(hostname): apt-get install -f não conseguiu corrigir dependências quebradas."
+fi
 apt-get check || log_warn "apt-get check reportou inconsistências."
 
 log_info "3/9. Removendo pacotes e dependências não utilizados (com --purge)..."

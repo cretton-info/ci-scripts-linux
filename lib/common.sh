@@ -74,3 +74,46 @@ confirm() {
 has_cmd() {
     command -v "$1" &>/dev/null
 }
+
+# Envia um alerta em JSON para WEBHOOK_URL (se definida), com cooldown por motivo
+# (evita repetir o mesmo alerta enquanto o problema persiste, ex.: o mesmo cron
+# rodando de novo antes de alguém resolver). Usado por qualquer script para
+# reportar falhas sem duplicar essa lógica em cada um.
+# Uso: alert_webhook "motivo_curto_sem_espacos" "detalhe legível pra humano"
+alert_webhook() {
+    local motivo="$1" detalhe="$2"
+    local webhook="${WEBHOOK_URL:-}"
+    [ -n "$webhook" ] || return 0
+    if ! has_cmd curl; then
+        log_warn "WEBHOOK_URL definido mas curl não encontrado — alerta não enviado."
+        return 0
+    fi
+
+    local cooldown_horas="${ALERTA_COOLDOWN_HORAS:-6}"
+    local estado_dir chave arquivo_estado
+    estado_dir="$(dirname "${LOG_FILE:-/tmp/ci-scripts-linux-logs/x}")/alertas"
+    mkdir -p "$estado_dir" 2>/dev/null || estado_dir="/tmp/ci-scripts-linux-alertas"
+    mkdir -p "$estado_dir" 2>/dev/null || true
+    chave=$(echo "$motivo" | tr -cs '[:alnum:]' '_')
+    arquivo_estado="${estado_dir}/${chave}.last"
+
+    if [ -f "$arquivo_estado" ]; then
+        local ultimo_ts agora_ts
+        ultimo_ts=$(cat "$arquivo_estado" 2>/dev/null || echo 0)
+        agora_ts=$(date +%s)
+        if [ $(( (agora_ts - ultimo_ts) / 3600 )) -lt "$cooldown_horas" ]; then
+            return 0
+        fi
+    fi
+
+    local payload
+    payload=$(printf '{"hostname":"%s","script":"%s","motivo":"%s","detalhe":"%s","data":"%s"}' \
+        "$(hostname)" "$(basename "${0%.sh}")" "$motivo" "$detalhe" "$(date '+%Y-%m-%d %H:%M:%S')")
+
+    if curl -fsS -m 10 -X POST -H 'Content-Type: application/json' -d "$payload" "$webhook" >/dev/null 2>&1; then
+        date +%s > "$arquivo_estado" 2>/dev/null || true
+        log_info "Alerta enviado via webhook: ${motivo} (${detalhe})"
+    else
+        log_warn "Falha ao enviar alerta via webhook para: ${motivo}"
+    fi
+}
