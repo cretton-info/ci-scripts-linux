@@ -1,0 +1,13 @@
+# hosts.conf — lista de hosts que o status_frota.sh consulta via SSH.
+# Copie este arquivo para "hosts.conf" (mesma pasta) e edite com os seus.
+#
+# Um destino SSH por linha — qualquer coisa que funcione com "ssh <destino>":
+# um alias do seu ~/.ssh/config, ou user@host. Linhas em branco ou
+# começando com # são ignoradas.
+#
+# Requer acesso SSH sem senha (chave configurada previamente) e o
+# ci-scripts-linux já instalado (~/scripts/) em cada host listado aqui.
+
+vps-cliente-a
+vps-cliente-b
+# root@192.168.1.50
