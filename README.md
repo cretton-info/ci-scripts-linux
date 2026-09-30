@@ -90,9 +90,3 @@ Todo push/PR roda [ShellCheck](https://www.shellcheck.net/) via GitHub Actions
 ```bash
 shellcheck **/*.sh
 ```
-
-## Scripts adicionados nesta organização
-
-`health_check.sh`, `inventario_universal.sh` e `manutencao_avancada.sh` eram referenciados pelo
-`painel.sh` original mas ainda não existiam — foram criados do zero seguindo o mesmo padrão dos
-demais. Revise os limiares e comandos antes de rodar em produção de cliente.

@@ -5,6 +5,10 @@
 | `backup_multiperfil.sh` | Backup rotativo em `tar.gz` por perfil (`docs`, `homelab`, `scripts`, `tudo`), com retenção configurável (`RETENCAO_DIAS`, padrão 7 dias). |
 | `restaurar_backup.sh` | Restauração interativa de um backup, nos locais originais ou em diretório temporário para auditoria. Antes de sobrescrever o sistema, cria automaticamente um backup preventivo do estado atual em `~/backups_sistema/_seguranca_pre_restauracao/`. |
 
+> **Atenção:** os argumentos `docs` e `tudo` gravam, respectivamente, nas pastas `documentos/` e
+> `completo/` dentro de `~/backups_sistema/` (não `docs/` nem `tudo/`). `homelab` e `scripts` geram
+> pastas com o mesmo nome do argumento. É o nome da pasta que aparece na hora de restaurar.
+
 ## Uso
 
 ```bash
