@@ -4,6 +4,7 @@
 |---|---|
 | `health_check.sh` | Saúde geral: modelo de CPU, uptime/carga, memória, disco (destaca partições acima do limiar), top 5 processos por CPU e por RAM, conectividade/DNS, serviços systemd falhando e status de contêineres Docker. |
 | `network_scanner.sh` | Descobre hosts ativos na sub-rede local (ping sweep paralelo) e testa portas comuns (22, 80, 443, 3389, 8080, 8443). |
+| `status_frota.sh` | Roda `health_check.sh --json` via SSH em vários hosts (lista em `hosts.conf`) e agrega tudo numa tabela só. Requer `jq` e acesso SSH sem senha. |
 
 ## Uso
 
@@ -53,3 +54,19 @@ manualmente), coloque no cron:
 ```
 */15 * * * * WEBHOOK_URL="https://seu-n8n.exemplo.com/webhook/alerta" /home/<usuario>/scripts/health_check.sh > /dev/null 2>&1
 ```
+
+## Status de vários hosts de uma vez (frota)
+
+Se você atende mais de um cliente/VPS, o `status_frota.sh` roda `health_check.sh --json` via SSH em
+cada host listado em `hosts.conf` e mostra um resumo numa tabela só, sem precisar entrar host por
+host:
+
+```bash
+cp ~/scripts/hosts.conf.example ~/scripts/hosts.conf
+nano ~/scripts/hosts.conf   # um host por linha (alias do ~/.ssh/config ou usuario@host)
+bash ~/scripts/status_frota.sh
+```
+
+Requer `jq`, acesso SSH sem senha a cada host, e o `ci-scripts-linux` já instalado (`~/scripts/`)
+neles. Host fora do ar aparece como `OFFLINE` em vez de travar a checagem dos outros. Detalhes em
+[docs/SCRIPTS.md](../docs/SCRIPTS.md).

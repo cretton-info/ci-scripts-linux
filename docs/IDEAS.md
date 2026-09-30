@@ -16,8 +16,9 @@ ideias anotadas para não perder — implementar sob demanda.
   locale pt_BR (alerta de memória e campo de CPU ficavam sempre vazios/nunca disparavam,
   silenciosamente); e `detectar_app` sem `</dev/null`+`timeout` travava o inventário inteiro se um
   app (ex.: Obsidian, Antigravity) não tratasse `--version` direito.
-- **Painel de frota** — script `status_frota.sh` que roda `health_check.sh --json` via SSH em vários
-  hosts (lista em `hosts.conf`) e agrega numa tabela só.
+- ~~**Painel de frota**~~ — feito: novo script `monitoring/status_frota.sh` (opção 9 no `painel.sh`),
+  agrega `health_check.sh --json` via SSH de vários hosts numa tabela só; host fora do ar não trava
+  os outros. Config em `hosts.conf` (exemplo em `hosts.conf.example`).
 
 ## 🛡️ Confiabilidade
 

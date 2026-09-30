@@ -312,6 +312,45 @@ isso está dentro do escopo autorizado antes de rodar contra redes que não são
 
 ---
 
+## monitoring/status_frota.sh
+
+**O que faz:** roda `health_check.sh --json` via SSH em cada host listado em `hosts.conf` e mostra
+um resumo numa tabela só (host, status, % memória, % disco máximo, serviços falhando,
+conectividade). Não altera nada nos hosts remotos — só leitura. Útil pra checar vários
+clientes/VPS de uma vez sem entrar host por host.
+
+**Requisitos:** `jq` e `ssh` instalados; acesso SSH sem senha (chave configurada previamente) a
+cada host; o `ci-scripts-linux` já instalado (`~/scripts/`) em cada host remoto.
+
+**Uso:**
+
+```bash
+cp ~/scripts/hosts.conf.example ~/scripts/hosts.conf   # na primeira vez
+nano ~/scripts/hosts.conf                               # edite com seus hosts
+bash ~/scripts/status_frota.sh
+```
+
+**Configuração (`hosts.conf`):** um destino SSH por linha (alias do `~/.ssh/config` ou
+`usuario@host`). Linhas em branco ou começando com `#` são ignoradas. **Uma reinstalação
+(`install.sh`) nunca sobrescreve um `hosts.conf` já existente.**
+
+**Variáveis de ambiente:**
+
+- `HOSTS_CONF` — caminho do arquivo de hosts (padrão: `hosts.conf` ao lado do script).
+- `LIMIAR_DISCO` / `LIMIAR_MEM` — mesmos limiares do `health_check.sh` (padrão: `85`/`90`), usados
+  aqui só para decidir se a linha do host aparece como `ALERTA` na tabela.
+- `SSH_TIMEOUT` — timeout de conexão por host em segundos (padrão: `8`) — um host fora do ar não
+  trava a checagem dos outros, só aparece como `OFFLINE`.
+
+**Status `ALERTA`** quando memória ou disco passam do limiar, há algum serviço `systemd` falhando,
+ou não há conectividade com a internet naquele host. **`OFFLINE`** quando o SSH falha ou a resposta
+não é um JSON válido (ex.: `ci-scripts-linux` desatualizado sem `--json`, ou não instalado).
+
+**Exit codes:** `1` se algum host ficou em `ALERTA` ou `OFFLINE` (útil pra cron detectar problema
+pelo código de saída), `0` se todos os hosts estão OK.
+
+---
+
 ## provisioning/setup_pos_instalacao.sh
 
 **O que faz:** provisionamento pós-instalação de uma máquina Debian/Ubuntu/Zorin nova: atualização
@@ -491,6 +530,7 @@ bash ~/scripts/painel.sh    # direto, sem atalho
 | 6 | `restaurar_backup.sh` | sim |
 | 7 | `simulado_restauracao.sh` | não |
 | 8 | `setup_pos_instalacao.sh` | sim |
+| 9 | `status_frota.sh` | não |
 | 0 | sai do painel | — |
 
 \* `backup_multiperfil.sh` não exige `sudo`, mas normalmente precisa dele pra conseguir ler `/etc`.

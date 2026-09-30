@@ -7,7 +7,7 @@ provisionamento, manutenção e um painel central de acesso.
 
 ```
 backup/          backup_multiperfil.sh, restaurar_backup.sh, simulado_restauracao.sh
-monitoring/      health_check.sh, network_scanner.sh
+monitoring/      health_check.sh, network_scanner.sh, status_frota.sh, hosts.conf.example
 provisioning/    setup_pos_instalacao.sh, inventario_universal.sh, apps.conf
 maintenance/     manutencao_avancada.sh
 panel/           painel.sh (menu central)
