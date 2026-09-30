@@ -45,8 +45,9 @@ ideias anotadas para não perder — implementar sob demanda.
 
 - **Notificação de conclusão, não só de falha** — resumo diário/semanal via webhook. Silêncio total
   também pode significar "o cron parou", não só "está tudo bem".
-- **Múltiplos destinos rclone simultâneos** (`RCLONE_REMOTO` como lista separada por vírgula) pra
-  redundância 3-2-1 real.
+- ~~**Múltiplos destinos rclone simultâneos**~~ — feito: `RCLONE_REMOTO` aceita lista separada por
+  vírgula, cada destino independente (falha num não impede os outros), alerta por destino via
+  `alert_webhook`.
 - **`update.sh`** — `git pull` + `sudo ./install.sh` numa linha só.
 
 ## 📦 Distribuição / DX
