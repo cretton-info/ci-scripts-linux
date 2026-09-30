@@ -4,6 +4,7 @@
 |---|---|
 | `backup_multiperfil.sh` | Backup rotativo em `tar.gz` por perfil (`docs`, `homelab`, `scripts`, `tudo`), com retenção configurável (`RETENCAO_DIAS`, padrão 7 dias). |
 | `restaurar_backup.sh` | Restauração interativa de um backup, nos locais originais ou em diretório temporário para auditoria. Antes de sobrescrever o sistema, cria automaticamente um backup preventivo do estado atual em `~/backups_sistema/_seguranca_pre_restauracao/`, com retenção própria (`RETENCAO_PREVENTIVOS_DIAS`, padrão 30 dias). |
+| `simulado_restauracao.sh` | Testa que os backups realmente restauram — extrai o mais recente de cada perfil num diretório temporário, confere integridade e um arquivo-chave, e apaga tudo em seguida. Não interativo, sem privilégio especial, seguro pra cron. |
 
 > **Atenção:** os argumentos `docs` e `tudo` gravam, respectivamente, nas pastas `documentos/` e
 > `completo/` dentro de `~/backups_sistema/` (não `docs/` nem `tudo/`). `homelab` e `scripts` geram
@@ -51,6 +52,17 @@ arquivo e falha na hora, em vez de deixar um backup ruim para trás.
 O `restaurar_backup.sh` confere esse checksum antes de tocar em qualquer coisa e recusa restaurar um
 backup que não bate. Backups antigos sem `.sha256` (de antes dessa verificação existir) caem
 automaticamente para um teste de leitura do `tar` como fallback.
+
+## Simulado de restauração
+
+Um backup nunca testado não é um backup, é só um `.tar.gz`. O `simulado_restauracao.sh` extrai o
+backup mais recente de cada perfil num diretório temporário (sem tocar no sistema real), confere a
+integridade e a presença de um arquivo-chave (`etc/passwd` por padrão), e reporta via `WEBHOOK_URL`
+se algo falhar. Bom candidato pra rodar semanalmente via cron, depois do backup:
+
+```bash
+0 4 * * 0 /home/<usuario>/scripts/simulado_restauracao.sh > /dev/null 2>&1
+```
 
 ## Exclusão de padrões
 

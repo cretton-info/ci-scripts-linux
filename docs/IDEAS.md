@@ -21,8 +21,8 @@ ideias anotadas para não perder — implementar sob demanda.
 - ~~**Guard-rail no `RETENCAO_DIAS`**~~ — feito em `backup_multiperfil.sh` (recusa valores < 1).
 - ~~**Checar espaço livre antes de restaurar em `/`**~~ — feito em `restaurar_backup.sh` (soma o
   tamanho descompactado via `tar -tvzf` e compara com `df` do destino, nos dois modos).
-- **"Simulado de restauração" agendável** — modo não interativo que extrai o backup mais recente
-  num diretório temporário, confere arquivos-chave (ex.: `etc/passwd`) e reporta por webhook.
+- ~~**"Simulado de restauração" agendável**~~ — feito: novo script `backup/simulado_restauracao.sh`,
+  não interativo, integrado ao `painel.sh` (opção 7) e ao `alert_webhook`.
 - **`--dry-run` na manutenção e no backup**, pra rodar em cliente novo com confiança.
 
 ## 🧪 Testes automatizados

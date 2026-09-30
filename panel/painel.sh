@@ -48,11 +48,12 @@ while true; do
     echo " 4) 🧹 Manutenção, Limpeza & Atualização do Sistema"
     echo " 5) 💾 Executar Backup Multi-Perfil"
     echo " 6) 🔄 Restaurar Backup Interativo"
-    echo " 7) 🚀 Provisionar Máquina (Setup Pós-Instalação)"
+    echo " 7) 🧪 Simulado de Restauração (testa os backups sem alterar nada)"
+    echo " 8) 🚀 Provisionar Máquina (Setup Pós-Instalação)"
     echo "----------------------------------------------------------"
     echo " 0) ❌ Sair"
     echo "=========================================================="
-    read -r -p "Escolha uma opção [0-7]: " OPCAO
+    read -r -p "Escolha uma opção [0-8]: " OPCAO
 
     case "$OPCAO" in
         1) executar "health_check.sh" ;;
@@ -61,7 +62,8 @@ while true; do
         4) executar "manutencao_avancada.sh" sudo ;;
         5) executar "backup_multiperfil.sh" ;;
         6) executar "restaurar_backup.sh" sudo ;;
-        7) executar "setup_pos_instalacao.sh" sudo ;;
+        7) executar "simulado_restauracao.sh" ;;
+        8) executar "setup_pos_instalacao.sh" sudo ;;
         0)
             echo -e "\nSaindo... Até logo!"
             exit 0

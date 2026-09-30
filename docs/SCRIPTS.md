@@ -199,6 +199,37 @@ quando falta espaço no destino.
 
 ---
 
+## backup/simulado_restauracao.sh
+
+**O que faz:** confere que os backups realmente restauram, sem alterar nada no sistema real. Pega o
+backup mais recente de um perfil (ou de todos os perfis encontrados, se nenhum for passado), extrai
+num diretório temporário (`mktemp -d`), confere a integridade (mesma lógica do
+`restaurar_backup.sh`: checksum se existir, senão `tar -tzf`) e a presença de um arquivo-chave
+dentro do conteúdo extraído — depois apaga o diretório temporário. Não interativo, pensado pra rodar
+via cron sem supervisão.
+
+**Requisitos:** nenhum privilégio especial (só precisa conseguir ler `~/backups_sistema`).
+
+**Uso:**
+
+```bash
+bash ~/scripts/simulado_restauracao.sh              # todos os perfis encontrados
+bash ~/scripts/simulado_restauracao.sh homelab       # só um perfil
+```
+
+**Variáveis de ambiente:**
+
+- `ARQUIVO_CHAVE` — caminho (relativo à raiz do `.tar.gz`) que precisa existir no backup extraído
+  pra ele ser considerado válido (padrão: `etc/passwd` — presente em todo perfil, já que `/etc`
+  sempre é incluído em `backup_multiperfil.sh`).
+- `WEBHOOK_URL` — se definida, alerta via [`alert_webhook`](#libcommonsh) quando um simulado falha
+  (perfil sem backup, checksum não confere, extração falha ou arquivo-chave ausente).
+
+**Exit codes:** `1` se qualquer perfil testado tiver falhado (útil pra cron detectar problema via
+código de saída, sem precisar parsear a saída); `0` se todos os perfis passaram.
+
+---
+
 ## monitoring/health_check.sh
 
 **O que faz:** raio-x rápido de saúde do sistema — modelo de CPU, uptime/carga, memória, disco, top 5
@@ -417,7 +448,8 @@ bash ~/scripts/painel.sh    # direto, sem atalho
 | 4 | `manutencao_avancada.sh` | sim |
 | 5 | `backup_multiperfil.sh` | não* |
 | 6 | `restaurar_backup.sh` | sim |
-| 7 | `setup_pos_instalacao.sh` | sim |
+| 7 | `simulado_restauracao.sh` | não |
+| 8 | `setup_pos_instalacao.sh` | sim |
 | 0 | sai do painel | — |
 
 \* `backup_multiperfil.sh` não exige `sudo`, mas normalmente precisa dele pra conseguir ler `/etc`.
