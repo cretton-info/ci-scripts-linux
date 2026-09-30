@@ -15,6 +15,12 @@ DESTINO_BASE="${USER_HOME}/backups_sistema"
 RETENCAO_DIAS="${RETENCAO_DIAS:-7}"
 DATA=$(date +%Y-%m-%d_%H%M%S)
 
+# Guard-rail: RETENCAO_DIAS inválido ou menor que 1 apagaria backups recém-criados
+# (inclusive o desta própria execução) na primeira rotação. Recusa em vez de arriscar.
+if ! [[ "$RETENCAO_DIAS" =~ ^[0-9]+$ ]] || [ "$RETENCAO_DIAS" -lt 1 ]; then
+    die "RETENCAO_DIAS inválido: '$RETENCAO_DIAS' (precisa ser um número inteiro >= 1)."
+fi
+
 exibir_ajuda() {
     cat <<EOF
 Uso: sudo $0 [PERFIL]
