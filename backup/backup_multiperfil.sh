@@ -42,6 +42,10 @@ Variáveis de ambiente:
   RCLONE_REMOTO     Remote:caminho do rclone (ex.: "b2:meu-bucket/cliente-x").
                     Se definido, envia o backup e o checksum recém-criados
                     para lá após o backup local (requer rclone configurado).
+                    Aceita mais de um destino separados por vírgula (ex.:
+                    "b2:bucket-x,gdrive:pasta-y") pra redundância 3-2-1 —
+                    cada um é enviado de forma independente, e a falha num
+                    não impede o envio pros outros.
   RCLONE_FLAGS      Flags extras passadas ao rclone (ex.: "--fast-list").
 EOF
 }
@@ -191,20 +195,28 @@ log_ok "Integridade verificada. Checksum: $(basename "$CHECKSUM_FINAL")"
 chown -R "${REAL_USER}:${REAL_USER}" "$DESTINO_BASE"
 
 # 4. Envio remoto opcional via rclone (não derruba o backup local em caso de falha)
+# RCLONE_REMOTO aceita mais de um destino separados por vírgula, pra redundância
+# 3-2-1 real (ex.: um provedor local + um na nuvem) — cada um é independente,
+# a falha num não impede o envio pros outros.
 if [ -n "${RCLONE_REMOTO:-}" ]; then
     if ! has_cmd rclone; then
         log_warn "RCLONE_REMOTO definido mas rclone não encontrado — envio remoto pulado."
     else
-        RCLONE_DESTINO="${RCLONE_REMOTO%/}/${NOME_PERFIL}/"
-        log_info "Enviando backup para remoto: $RCLONE_DESTINO"
-        # rclone copy aceita só um arquivo de origem por vez (dest é sempre um diretório aqui)
-        # shellcheck disable=SC2086
-        if rclone copy "$ARQUIVO_FINAL" "$RCLONE_DESTINO" ${RCLONE_FLAGS:-} 2>&1 | tee -a "${LOG_FILE:-/dev/null}" \
-            && rclone copy "$CHECKSUM_FINAL" "$RCLONE_DESTINO" ${RCLONE_FLAGS:-} 2>&1 | tee -a "${LOG_FILE:-/dev/null}"; then
-            log_ok "Backup enviado ao remoto: $RCLONE_DESTINO"
-        else
-            log_warn "Falha ao enviar backup ao remoto ($RCLONE_DESTINO) — backup local preservado."
-        fi
+        IFS=',' read -r -a RCLONE_DESTINOS <<< "$RCLONE_REMOTO"
+        for remoto in "${RCLONE_DESTINOS[@]}"; do
+            [ -n "$remoto" ] || continue
+            RCLONE_DESTINO="${remoto%/}/${NOME_PERFIL}/"
+            log_info "Enviando backup para remoto: $RCLONE_DESTINO"
+            # rclone copy aceita só um arquivo de origem por vez (dest é sempre um diretório aqui)
+            # shellcheck disable=SC2086
+            if rclone copy "$ARQUIVO_FINAL" "$RCLONE_DESTINO" ${RCLONE_FLAGS:-} 2>&1 | tee -a "${LOG_FILE:-/dev/null}" \
+                && rclone copy "$CHECKSUM_FINAL" "$RCLONE_DESTINO" ${RCLONE_FLAGS:-} 2>&1 | tee -a "${LOG_FILE:-/dev/null}"; then
+                log_ok "Backup enviado ao remoto: $RCLONE_DESTINO"
+            else
+                log_warn "Falha ao enviar backup ao remoto ($RCLONE_DESTINO) — backup local preservado."
+                alert_webhook "backup_rclone_falhou" "Perfil '${NOME_PERFIL}': falha ao enviar pro remoto ${remoto}."
+            fi
+        done
     fi
 fi
 

@@ -46,8 +46,9 @@ ideias anotadas para não perder — implementar sob demanda.
 - ~~**Notificação de conclusão, não só de falha**~~ — feito: `health_check.sh --resumo` manda um
   heartbeat pro webhook mesmo sem alerta, cooldown próprio via `RESUMO_COOLDOWN_HORAS` (padrão 24h,
   independente do cooldown dos alertas).
-- **Múltiplos destinos rclone simultâneos** (`RCLONE_REMOTO` como lista separada por vírgula) pra
-  redundância 3-2-1 real.
+- ~~**Múltiplos destinos rclone simultâneos**~~ — feito: `RCLONE_REMOTO` aceita lista separada por
+  vírgula, cada destino independente (falha num não impede os outros), alerta por destino via
+  `alert_webhook`.
 - ~~**`update.sh`**~~ — feito: `git pull` + `sudo ./install.sh`, com checagem de checkout git,
   aviso de alterações não commitadas, e relato correto se o `install.sh` falhar depois do pull
   (não finge sucesso).

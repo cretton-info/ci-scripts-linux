@@ -106,7 +106,10 @@ deixar rodando de verdade.
   `<RCLONE_REMOTO>/<perfil>/` via `rclone copy` logo após a verificação de integridade local.
   Requer `rclone` instalado e configurado (`rclone config`); se o binário não existir, só avisa
   (`log_warn`) e segue com o backup local. Falha no envio remoto não afeta o backup local nem a
-  rotação. Use `sudo -E` para a variável chegar ao processo com privilégio.
+  rotação, e alerta via [`alert_webhook`](#libcommonsh) se `WEBHOOK_URL` estiver definida. Aceita
+  **mais de um destino separados por vírgula** (ex.: `"b2:bucket-x,gdrive:pasta-y"`) pra redundância
+  3-2-1 real — cada destino é enviado de forma independente, a falha num não impede o envio pros
+  outros. Use `sudo -E` para a variável chegar ao processo com privilégio.
 - `RCLONE_FLAGS` — flags extras passadas ao `rclone copy` (ex.: `"--transfers 4"`).
 - `WEBHOOK_URL` — se definida, alerta via [`alert_webhook`](#libcommonsh) quando não há nenhuma
   origem válida para o perfil, o `tar` falha, ou o backup sai corrompido logo após a criação.
