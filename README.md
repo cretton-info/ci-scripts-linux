@@ -14,6 +14,7 @@ panel/           painel.sh (menu central)
 lib/common.sh    funções compartilhadas (log, require_root, detect_real_user, confirm)
 lib/logrotate.conf  regra de rotação dos logs, instalada automaticamente em /etc/logrotate.d
 install.sh       instala os scripts em ~/scripts (flat), compatível com o painel e crontabs
+update.sh        git pull + reinstala numa tacada só, pra atualizar uma máquina já configurada
 docs/SCRIPTS.md  referência detalhada de cada script
 docs/BACKUP_REMOTO.md  passo a passo do backup remoto via rclone (Google Drive)
 tests/           testes automatizados (bats-core) de lib/common.sh
@@ -38,6 +39,13 @@ Depois:
 
 ```bash
 painel
+```
+
+Pra atualizar depois (puxar mudanças do repositório e reinstalar em `~/scripts/` numa tacada só):
+
+```bash
+cd ci-scripts-linux
+./update.sh
 ```
 
 ## Padrões usados em todos os scripts

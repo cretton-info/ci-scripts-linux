@@ -48,7 +48,9 @@ ideias anotadas para não perder — implementar sob demanda.
   independente do cooldown dos alertas).
 - **Múltiplos destinos rclone simultâneos** (`RCLONE_REMOTO` como lista separada por vírgula) pra
   redundância 3-2-1 real.
-- **`update.sh`** — `git pull` + `sudo ./install.sh` numa linha só.
+- ~~**`update.sh`**~~ — feito: `git pull` + `sudo ./install.sh`, com checagem de checkout git,
+  aviso de alterações não commitadas, e relato correto se o `install.sh` falhar depois do pull
+  (não finge sucesso).
 
 ## 📦 Distribuição / DX
 
