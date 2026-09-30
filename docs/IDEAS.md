@@ -16,8 +16,8 @@ ideias anotadas para não perder — implementar sob demanda.
 
 ## 🛡️ Confiabilidade
 
-- **Lock de concorrência no backup** (`flock`) — evita sobreposição se o cron disparar
-  `backup_multiperfil.sh` enquanto a execução anterior ainda está rodando.
+- ~~**Lock de concorrência no backup** (`flock`)~~ — feito em `backup_multiperfil.sh` (lock por
+  perfil em `~/backups_sistema/.lock_<perfil>`).
 - ~~**Guard-rail no `RETENCAO_DIAS`**~~ — feito em `backup_multiperfil.sh` (recusa valores < 1).
 - **Checar espaço livre antes de restaurar em `/`** em `restaurar_backup.sh` — comparar `df` com o
   tamanho do `.tar.gz` antes de extrair.

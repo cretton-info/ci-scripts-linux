@@ -88,6 +88,19 @@ case "$OPCAO" in
         ;;
 esac
 
+# Lock de concorrência: evita que duas execuções do mesmo perfil rodem ao mesmo tempo
+# (ex.: cron disparando de novo enquanto a execução anterior ainda compacta uma origem grande).
+if has_cmd flock; then
+    mkdir -p "$DESTINO_BASE"
+    LOCK_FILE="${DESTINO_BASE}/.lock_${NOME_PERFIL}"
+    exec 200>"$LOCK_FILE"
+    if ! flock -n 200; then
+        die "Já existe um backup do perfil '${NOME_PERFIL}' em andamento (lock: $LOCK_FILE). Abortando para evitar sobreposição."
+    fi
+else
+    log_warn "Comando 'flock' não encontrado — não é possível evitar execuções sobrepostas deste script."
+fi
+
 DESTINO_FINAL="${DESTINO_BASE}/${NOME_PERFIL}"
 mkdir -p "$DESTINO_FINAL"
 ARQUIVO_FINAL="${DESTINO_FINAL}/backup_${NOME_PERFIL}_${DATA}.tar.gz"
