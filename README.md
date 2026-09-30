@@ -15,6 +15,7 @@ lib/common.sh    funções compartilhadas (log, require_root, detect_real_user, 
 lib/logrotate.conf  regra de rotação dos logs, instalada automaticamente em /etc/logrotate.d
 install.sh       instala os scripts em ~/scripts (flat), compatível com o painel e crontabs
 update.sh        git pull + reinstala numa tacada só, pra atualizar uma máquina já configurada
+CHANGELOG.md     histórico de mudanças por versão
 docs/SCRIPTS.md  referência detalhada de cada script
 docs/BACKUP_REMOTO.md  passo a passo do backup remoto via rclone (Google Drive)
 tests/           testes automatizados (bats-core) de lib/common.sh
@@ -84,6 +85,20 @@ Para forçar outro local: `CI_LOG_DIR=/caminho sudo ~/scripts/manutencao_avancad
 instalada em `/etc/logrotate.d/ci-scripts-linux` automaticamente — o `logrotate` do sistema (já roda
 diariamente sozinho) cuida do resto. Numa reinstalação, um `logrotate.d/ci-scripts-linux` já existente
 nunca é sobrescrito.
+
+## Versionamento
+
+Tags git no formato `vMAJOR.MINOR.PATCH` (ex.: `v1.0.0`). Cada release tem uma entrada no
+[CHANGELOG.md](CHANGELOG.md). O `install.sh` grava a versão instalada em `~/scripts/VERSION`
+(saída de `git describe --tags`), mostrada no cabeçalho do `painel.sh` — dá pra saber rapidinho se
+uma máquina de cliente está desatualizada sem precisar checar o SHA do commit manualmente.
+
+Pra cortar uma release nova: atualize o `CHANGELOG.md`, commite, e taguei:
+
+```bash
+git tag -a v1.1.0 -m "v1.1.0"
+git push origin v1.1.0
+```
 
 ## CI
 

@@ -11,6 +11,7 @@ source "${SCRIPT_DIR}/../lib/common.sh" 2>/dev/null || source "${SCRIPT_DIR}/lib
 
 detect_real_user
 SCRIPTS_DIR="${USER_HOME}/scripts"
+VERSAO_INSTALADA=$(cat "${SCRIPTS_DIR}/VERSION" 2>/dev/null || echo "desconhecida")
 
 pausa() {
     echo -e "\nPressione [ENTER] para voltar ao menu..."
@@ -40,7 +41,7 @@ while true; do
     echo "=========================================================="
     echo " 🛠️  CENTRAL DE FERRAMENTAS DE INFRAESTRUTURA & TI "
     echo "=========================================================="
-    echo " Host: $(hostname) | Usuário: $REAL_USER"
+    echo " Host: $(hostname) | Usuário: $REAL_USER | Versão: $VERSAO_INSTALADA"
     echo "----------------------------------------------------------"
     echo " 1) 🔍 Saúde do Sistema (Health Check)"
     echo " 2) 📡 Varredura de Rede Local & Portas (Network Scanner)"

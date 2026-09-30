@@ -530,6 +530,9 @@ painel                      # se o atalho global foi criado pelo install.sh
 bash ~/scripts/painel.sh    # direto, sem atalho
 ```
 
+O cabeçalho mostra a versão instalada (lida de `~/scripts/VERSION`, gravada pelo `install.sh`) —
+útil pra saber rapidinho se uma máquina de cliente está desatualizada.
+
 | Opção | Script chamado | sudo? |
 |---|---|---|
 | 1 | `health_check.sh` | não |
@@ -576,6 +579,12 @@ sobrescreve, para preservar customizações feitas depois da instalação.
 **Rotação de logs:** se rodado como root e `/etc/logrotate.d` existir, instala
 `lib/logrotate.conf` em `/etc/logrotate.d/ci-scripts-linux` — mesma regra "só na primeira
 instalação" dos arquivos `.conf`, não sobrescreve uma versão já existente.
+
+**Versão instalada:** grava `~/scripts/VERSION` com a saída de `git describe --tags --always
+--dirty` rodado no checkout do repositório (ex.: `v1.0.0`, ou `v1.0.0-3-gabc1234` se houver
+commits depois da tag, ou só o SHA curto se não houver nenhuma tag ainda). Se o `SCRIPT_DIR` não
+for um checkout git (ex.: baixado como zip), grava `desconhecida`. O `painel.sh` mostra esse valor
+no cabeçalho. Sempre sobrescrito a cada instalação/atualização — não é um arquivo pra editar.
 
 ---
 

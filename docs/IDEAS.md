@@ -55,6 +55,12 @@ ideias anotadas para não perder — implementar sob demanda.
 
 ## 📦 Distribuição / DX
 
-- **Versionamento com tags/CHANGELOG** — saber em qual versão cada máquina de cliente está, sem
-  precisar checar o SHA do commit.
-- **`painel.sh` mostrar a versão instalada** — `install.sh` grava o SHA num arquivo `VERSION`.
+- ~~**Versionamento com tags/CHANGELOG**~~ — feito: `CHANGELOG.md` novo (formato Keep a Changelog,
+  release `v1.0.0` retroativa cobrindo tudo até aqui) e convenção de tags documentada no README.
+- ~~**`painel.sh` mostrar a versão instalada**~~ — feito: `install.sh` grava `git describe --tags`
+  em `~/scripts/VERSION`, mostrado no cabeçalho do `painel.sh`.
+
+---
+
+Todos os itens deste backlog foram implementados (última atualização: 2026-09-30, release
+`v1.0.0`). Novas ideias, anote aqui.

@@ -35,10 +35,18 @@ for dir in backup monitoring provisioning maintenance panel; do
     done
 done
 
+# Versão instalada: usa a tag/commit do git se o SCRIPT_DIR for um checkout git
+# (ex.: "v1.0.0" ou "v1.0.0-3-gabc1234" se houver commits depois da tag); cai
+# pra "desconhecida" se não for um checkout git (ex.: baixado como zip).
+if [ -d "${SCRIPT_DIR}/.git" ] && has_cmd git; then
+    VERSAO=$(cd "$SCRIPT_DIR" && git describe --tags --always --dirty 2>/dev/null)
+fi
+echo "${VERSAO:-desconhecida}" > "$DEST/VERSION"
+
 chmod +x "$DEST"/*.sh
 chown -R "${REAL_USER}:${REAL_USER}" "$DEST"
 
-log_ok "Scripts instalados em $DEST"
+log_ok "Scripts instalados em $DEST (versão: ${VERSAO:-desconhecida})"
 
 if [ "$EUID" -eq 0 ]; then
     read -r -p "Criar atalho global 'painel' em /usr/local/bin? (s/N): " resp
