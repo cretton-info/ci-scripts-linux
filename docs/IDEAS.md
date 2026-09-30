@@ -19,8 +19,8 @@ ideias anotadas para não perder — implementar sob demanda.
 - ~~**Lock de concorrência no backup** (`flock`)~~ — feito em `backup_multiperfil.sh` (lock por
   perfil em `~/backups_sistema/.lock_<perfil>`).
 - ~~**Guard-rail no `RETENCAO_DIAS`**~~ — feito em `backup_multiperfil.sh` (recusa valores < 1).
-- **Checar espaço livre antes de restaurar em `/`** em `restaurar_backup.sh` — comparar `df` com o
-  tamanho do `.tar.gz` antes de extrair.
+- ~~**Checar espaço livre antes de restaurar em `/`**~~ — feito em `restaurar_backup.sh` (soma o
+  tamanho descompactado via `tar -tvzf` e compara com `df` do destino, nos dois modos).
 - **"Simulado de restauração" agendável** — modo não interativo que extrai o backup mais recente
   num diretório temporário, confere arquivos-chave (ex.: `etc/passwd`) e reporta por webhook.
 - **`--dry-run` na manutenção e no backup**, pra rodar em cliente novo com confiança.

@@ -166,8 +166,14 @@ originais" deixaria mais um arquivo acumulando pra sempre.
 sudo tar -xzf ~/backups_sistema/_seguranca_pre_restauracao/pre_restore_<perfil>_<data>.tar.gz -C /
 ```
 
-**Exit codes:** `1` em qualquer seleção inválida (perfil, arquivo ou modo inexistente) ou falha do
-`tar` na extração final.
+**Verificação de espaço livre (antes de extrair, nos dois modos):** soma o tamanho descompactado de
+todos os arquivos do backup (via `tar -tvzf`) e compara com o espaço livre no destino (via `df`). Se
+o espaço disponível for menor que o necessário, aborta **antes** de começar a extrair — uma extração
+interrompida pela metade por falta de espaço é pior que não restaurar nada, especialmente com
+`TARGET_DIR=/`. Se não for possível calcular um dos dois lados, apenas avisa e segue sem a checagem.
+
+**Exit codes:** `1` em qualquer seleção inválida (perfil, arquivo ou modo inexistente), espaço em
+disco insuficiente no destino, ou falha do `tar` na extração final.
 
 ---
 
