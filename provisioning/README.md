@@ -3,7 +3,7 @@
 | Script | Descrição |
 |---|---|
 | `setup_pos_instalacao.sh` | Provisionamento pós-instalação (Debian/Ubuntu/Zorin): pacotes essenciais, UFW, fail2ban, Docker + Compose plugin, estrutura de diretórios padrão. Requer `sudo`. |
-| `inventario_universal.sh` | Inventário de hardware e SO: CPU, memória (+ slots de RAM ocupados/livres, requer `sudo`), discos, interfaces de rede, runtimes (Docker, git, python3, node) e apps desktop. Mostra tudo na tela **e salva** `hardware_<modelo>.md` + `software_<modelo>.md` em `~/inventario/`. |
+| `inventario_universal.sh` | Inventário de hardware e SO: CPU, GPU, memória (+ slots de RAM ocupados/livres, requer `sudo`), discos, interfaces de rede, runtimes (Docker, Compose, git, python3, node, npm), status do UFW/Tailscale/Ollama e apps desktop. Mostra o essencial na tela **e salva** `hardware_<modelo>.md` + `software_<modelo>.md` (mais completos que a tela) em `~/inventario/`. |
 
 ## Uso
 

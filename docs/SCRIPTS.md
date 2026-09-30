@@ -48,12 +48,16 @@ chamados por um link simbólico (caso do atalho global `painel` em `/usr/local/b
 **O que faz:** cria um backup `.tar.gz` de um dos 4 perfis pré-definidos, com rotação automática de
 backups antigos.
 
-| Perfil | Origens |
-|---|---|
-| `docs` / `1` | `/etc` + `~/Documentos` |
-| `homelab` / `2` | `/etc` + `/var/www` + `/opt/docker-containers` |
-| `scripts` / `3` | `/etc` + `~/scripts` |
-| `tudo` / `4` | todas as anteriores combinadas |
+| Argumento | Pasta gerada em `~/backups_sistema/` | Origens |
+|---|---|---|
+| `docs` / `documentos` / `1` | `documentos/` | `/etc` + `~/Documentos` |
+| `homelab` / `docker` / `2` | `homelab/` | `/etc` + `/var/www` + `/opt/docker-containers` |
+| `scripts` / `automacao` / `3` | `scripts/` | `/etc` + `~/scripts` |
+| `tudo` / `completo` / `4` | `completo/` | todas as anteriores combinadas |
+
+Atenção: o nome da pasta gerada **não é sempre igual ao argumento** — `docs` grava em `documentos/`
+e `tudo` grava em `completo/`. É esse nome de pasta (não o argumento) que o `restaurar_backup.sh`
+lista na hora de escolher o que restaurar.
 
 **Requisitos:** não exige root explicitamente, mas normalmente roda com `sudo` para conseguir ler
 `/etc` e ajustar o dono do backup (`chown`) de volta pro usuário real.
@@ -236,7 +240,7 @@ de pacotes, utilitários essenciais, firewall, Docker e estrutura de diretórios
 sudo ~/scripts/setup_pos_instalacao.sh
 ```
 
-**O que faz, em ordem:**
+**O que faz, em ordem (5 etapas anunciadas no terminal):**
 
 1. `apt-get update && apt-get upgrade` — **não aborta** se algum repositório de terceiros
    (PPA) falhar; apenas avisa e segue com o que conseguiu atualizar.
@@ -247,7 +251,9 @@ sudo ~/scripts/setup_pos_instalacao.sh
 4. Instala Docker Engine + Compose plugin a partir do repositório oficial (se ainda não estiver
    instalado) e adiciona o usuário real ao grupo `docker`.
 5. Cria `~/scripts`, `~/backups_sistema`, `~/docker_stacks`.
-6. `apt-get autoremove && apt-get clean`.
+
+Ao final, roda `apt-get autoremove && apt-get clean` silenciosamente (sem número de etapa próprio no
+terminal, mas sempre executado).
 
 **Cuidados:**
 
@@ -260,9 +266,12 @@ sudo ~/scripts/setup_pos_instalacao.sh
 ## provisioning/inventario_universal.sh
 
 **O que faz:** inventário de hardware e sistema operacional — hostname, modelo da máquina, SO,
-kernel, CPU, memória, slots de RAM (ocupados/livres), placa-mãe, BIOS, discos/partições, interfaces
-de rede, versões de runtimes relevantes (Docker, git, Python, Node) e presença de apps desktop.
-Mostra tudo no terminal **e grava dois relatórios em Markdown**.
+kernel, CPU, GPU, memória, slots de RAM (ocupados/livres), placa-mãe, BIOS, discos/partições,
+interfaces de rede, versões de runtimes relevantes (Docker, Compose, git, Python, Node, NPM), status
+do UFW e do Tailscale, presença do Ollama e presença de apps desktop. Mostra o essencial no terminal
+**e grava dois relatórios em Markdown** — `hardware_<modelo>.md` e `software_<modelo>.md` — com mais
+detalhe que o terminal: GPU e status do UFW/Tailscale/Ollama só aparecem nos arquivos gerados, não
+na tela (apps desktop aparecem nos dois).
 
 **Requisitos:** nenhum privilégio especial para a exibição básica; modelo da máquina, placa-mãe,
 BIOS e slots de memória exigem root (`dmidecode`) — sem `sudo` essas seções mostram um aviso e caem
