@@ -11,6 +11,33 @@ teardown() {
     rm -rf "${TEST_TMP}"
 }
 
+# --- json_escape ------------------------------------------------------
+
+@test "json_escape: escapa aspas e barra invertida" {
+    CI_LOG_DIR="${TEST_TMP}/logs" source "${REPO_ROOT}/lib/common.sh"
+    run json_escape 'ele disse "oi" e usou \'
+    [ "$status" -eq 0 ]
+    [ "$output" = 'ele disse \"oi\" e usou \\' ]
+}
+
+@test "json_escape: troca quebra de linha e tab por \\n e \\t" {
+    run bash -c "CI_LOG_DIR='${TEST_TMP}/logs' source '${REPO_ROOT}/lib/common.sh'; json_escape \$'linha1\nlinha2\tcom tab'"
+    [ "$status" -eq 0 ]
+    [ "$output" = 'linha1\nlinha2\tcom tab' ]
+}
+
+@test "json_escape: remove caracteres de controle (ex.: cores ANSI) sem quebrar o JSON" {
+    run bash -c "
+        CI_LOG_DIR='${TEST_TMP}/logs' source '${REPO_ROOT}/lib/common.sh'
+        VALOR=\$(printf '\033[90mtexto colorido\033[0m')
+        ESCAPADO=\$(json_escape \"\$VALOR\")
+        printf '{\"campo\":\"%s\"}' \"\$ESCAPADO\"
+    "
+    [ "$status" -eq 0 ]
+    # o resultado tem que ser JSON válido — sem \033 cru no meio da string
+    echo "$output" | jq empty
+}
+
 # --- has_cmd -----------------------------------------------------------
 
 @test "has_cmd: retorna sucesso para um comando que existe" {

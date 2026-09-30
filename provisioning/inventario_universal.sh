@@ -11,7 +11,16 @@ source "${SCRIPT_DIR}/../lib/common.sh" 2>/dev/null || source "${SCRIPT_DIR}/lib
 
 detect_real_user
 DIR_DESTINO="${USER_HOME}/inventario"
-mkdir -p "$DIR_DESTINO"
+
+MODO="texto"
+for arg in "$@"; do
+    [ "$arg" = "--json" ] && MODO="json"
+done
+
+_juntar_json() {
+    local IFS=','
+    printf '%s' "$*"
+}
 
 # ------------------------------------------------------------------
 # 1. Coleta: Sistema e Hardware
@@ -45,8 +54,11 @@ FILE_HARDWARE="${DIR_DESTINO}/hardware_${MODELO_NOME}.md"
 FILE_SOFTWARE="${DIR_DESTINO}/software_${MODELO_NOME}.md"
 DATE_NOW=$(date '+%Y-%m-%d %H:%M')
 
+# LC_ALL=C força a etiqueta em inglês ("Model name") — em locales como pt_BR,
+# o lscpu traduz para "Nome do modelo" e o grep abaixo nunca bate, deixando o
+# campo de CPU sempre vazio.
 if has_cmd lscpu; then
-    CPU_INFO=$(lscpu | grep -m1 'Model name' | cut -d':' -f2 | xargs)
+    CPU_INFO=$(LC_ALL=C lscpu | grep -m1 'Model name' | cut -d':' -f2 | xargs)
 else
     CPU_INFO=$(grep -m1 'model name' /proc/cpuinfo | cut -d':' -f2 | xargs)
 fi
@@ -72,6 +84,9 @@ MAC_ADDRS=$(ip link show 2>/dev/null | grep -i ether | awk '{print $2}' | paste 
 # Slots de memória (dmidecode -t 17): total, ocupados/livres e módulo por módulo.
 SLOTS_RESUMO="Requer sudo para detectar (dmidecode)."
 SLOTS_DETALHE=""
+TOTAL_SLOTS=""
+SLOTS_LIVRES=""
+SLOTS_OCUPADOS=""
 if [ "$EUID" -eq 0 ] && has_cmd dmidecode; then
     DMI_MEM=$(dmidecode -t 17 2>/dev/null)
     if [ -n "$DMI_MEM" ] && echo "$DMI_MEM" | grep -q '^Memory Device$'; then
@@ -121,7 +136,13 @@ detectar_app() {
     for cmd in "$@"; do
         if has_cmd "$cmd"; then
             local ver
-            ver=$("$cmd" --version 2>/dev/null | head -n1)
+            # </dev/null evita que apps que leem stdin (ex.: obsidian --version,
+            # via snap) consumam o stdin do loop "while read < apps.conf" lá
+            # embaixo, o que travava a detecção depois do primeiro app da lista.
+            # timeout evita travar o script inteiro caso algum app não trate
+            # "--version" direito e abra a janela normal em vez de responder e sair
+            # (aconteceu de verdade com Obsidian e Antigravity durante os testes).
+            ver=$(timeout 3 "$cmd" --version </dev/null 2>/dev/null | head -n1)
             if [ -n "$ver" ]; then
                 echo "$ver"
             else
@@ -171,48 +192,50 @@ else
     done
 fi
 
-# ------------------------------------------------------------------
-# 3. Exibição no terminal
-# ------------------------------------------------------------------
-echo "=========================================================="
-echo " 📊 INVENTÁRIO DE HARDWARE & SISTEMA OPERACIONAL "
-echo "=========================================================="
+if [ "$MODO" = "texto" ]; then
+    # ------------------------------------------------------------------
+    # 3. Exibição no terminal
+    # ------------------------------------------------------------------
+    echo "=========================================================="
+    echo " 📊 INVENTÁRIO DE HARDWARE & SISTEMA OPERACIONAL "
+    echo "=========================================================="
 
-echo -e "\n🖥️  Sistema:"
-echo "  Hostname: $(hostname)"
-echo "  Modelo: $MODELO_FULL"
-echo "  SO: $OS_NAME"
-echo "  Kernel: $KERNEL"
-echo "  Arquitetura: $ARCH"
+    echo -e "\n🖥️  Sistema:"
+    echo "  Hostname: $(hostname)"
+    echo "  Modelo: $MODELO_FULL"
+    echo "  SO: $OS_NAME"
+    echo "  Kernel: $KERNEL"
+    echo "  Arquitetura: $ARCH"
 
-echo -e "\n🔩 CPU:"
-echo "  $CPU_INFO ($CPU_CORES núcleos)"
+    echo -e "\n🔩 CPU:"
+    echo "  $CPU_INFO ($CPU_CORES núcleos)"
 
-echo -e "\n💾 Memória:"
-free -h
-echo -e "\n🧠 Slots de Memória (RAM): $SLOTS_RESUMO"
-[ -n "$SLOTS_DETALHE" ] && echo "$SLOTS_DETALHE"
+    echo -e "\n💾 Memória:"
+    free -h
+    echo -e "\n🧠 Slots de Memória (RAM): $SLOTS_RESUMO"
+    [ -n "$SLOTS_DETALHE" ] && echo "$SLOTS_DETALHE"
 
-echo -e "\n📀 Discos e Partições:"
-lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE 2>/dev/null || df -h
+    echo -e "\n📀 Discos e Partições:"
+    lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE 2>/dev/null || df -h
 
-echo -e "\n🌐 Interfaces de Rede:"
-ip -brief addr show 2>/dev/null
+    echo -e "\n🌐 Interfaces de Rede:"
+    ip -brief addr show 2>/dev/null
 
-echo -e "\n📦 Pacotes / Runtimes relevantes:"
-printf "  %s\n" "$DOCKER_VER" "$COMPOSE_VER" "$GIT_VER" "$PYTHON_VER" "$NODE_VER"
+    echo -e "\n📦 Pacotes / Runtimes relevantes:"
+    printf "  %s\n" "$DOCKER_VER" "$COMPOSE_VER" "$GIT_VER" "$PYTHON_VER" "$NODE_VER"
 
-echo -e "\n🖊️  Aplicativos Desktop:"
-for i in "${!APPS_NOMES[@]}"; do
-    printf "  %-15s %s\n" "${APPS_NOMES[$i]}:" "${APPS_RESULTADOS[$i]}"
-done
+    echo -e "\n🖊️  Aplicativos Desktop:"
+    for i in "${!APPS_NOMES[@]}"; do
+        printf "  %-15s %s\n" "${APPS_NOMES[$i]}:" "${APPS_RESULTADOS[$i]}"
+    done
 
-echo -e "\n=========================================================="
+    echo -e "\n=========================================================="
 
-# ------------------------------------------------------------------
-# 4. Geração dos relatórios em Markdown (~/inventario/)
-# ------------------------------------------------------------------
-cat << DOC > "$FILE_HARDWARE"
+    # ------------------------------------------------------------------
+    # 4. Geração dos relatórios em Markdown (~/inventario/)
+    # ------------------------------------------------------------------
+    mkdir -p "$DIR_DESTINO"
+    cat << DOC > "$FILE_HARDWARE"
 # 💻 Especificações de Hardware — $MODELO_FULL
 
 ## 🛠️ Componentes Principais
@@ -242,8 +265,8 @@ cat << DOC > "$FILE_HARDWARE"
 *Gerado por: $REAL_USER em $DATE_NOW*
 DOC
 
-{
-    cat << DOC
+    {
+        cat << DOC
 # 🐧 Inventário de Software & Serviços — $MODELO_FULL
 
 ## ⚙️ Sistema Operacional & Base
@@ -261,10 +284,10 @@ DOC
 | Aplicação | Status / Versão |
 | :--- | :--- |
 DOC
-    for i in "${!APPS_NOMES[@]}"; do
-        printf "| **%s** | %s |\n" "${APPS_NOMES[$i]}" "${APPS_RESULTADOS[$i]}"
-    done
-    cat << DOC
+        for i in "${!APPS_NOMES[@]}"; do
+            printf "| **%s** | %s |\n" "${APPS_NOMES[$i]}" "${APPS_RESULTADOS[$i]}"
+        done
+        cat << DOC
 
 ---
 
@@ -288,9 +311,66 @@ DOC
 ---
 *Gerado por: $REAL_USER em $DATE_NOW*
 DOC
-} > "$FILE_SOFTWARE"
+    } > "$FILE_SOFTWARE"
 
-chown -R "${REAL_USER}:${REAL_USER}" "$DIR_DESTINO" 2>/dev/null || true
+    chown -R "${REAL_USER}:${REAL_USER}" "$DIR_DESTINO" 2>/dev/null || true
 
-log_ok "Relatórios salvos em: $DIR_DESTINO"
-ls -lh "$DIR_DESTINO"
+    log_ok "Relatórios salvos em: $DIR_DESTINO"
+    ls -lh "$DIR_DESTINO"
+else
+    # ------------------------------------------------------------------
+    # 3'. Saída em JSON — não escreve nada em disco, só imprime pra stdout.
+    # ------------------------------------------------------------------
+    DISCOS_ITENS=()
+    while read -r nome tamanho modelo tipo; do
+        [ "$tipo" = "disk" ] || continue
+        DISCOS_ITENS+=("{\"nome\":\"$(json_escape "$nome")\",\"tamanho\":\"$(json_escape "$tamanho")\",\"modelo\":\"$(json_escape "${modelo:-}")\"}")
+    done < <(lsblk -d -o NAME,SIZE,MODEL,TYPE 2>/dev/null | tail -n +2)
+
+    INTERFACES_ITENS=()
+    while read -r nome ip_cidr; do
+        [ -n "$nome" ] || continue
+        INTERFACES_ITENS+=("{\"nome\":\"$(json_escape "$nome")\",\"ip\":\"$(json_escape "${ip_cidr:-}")\"}")
+    done < <(ip -br addr show 2>/dev/null | grep -v '^lo' | awk '{print $1, $3}')
+
+    MACS_ITENS=()
+    while read -r mac; do
+        [ -n "$mac" ] && MACS_ITENS+=("\"$(json_escape "$mac")\"")
+    done < <(ip link show 2>/dev/null | grep -i ether | awk '{print $2}')
+
+    APPS_ITENS=()
+    for i in "${!APPS_NOMES[@]}"; do
+        APPS_ITENS+=("{\"nome\":\"$(json_escape "${APPS_NOMES[$i]}")\",\"status\":\"$(json_escape "${APPS_RESULTADOS[$i]}")\"}")
+    done
+
+    NUCLEOS_JSON="null"
+    [[ "$CPU_CORES" =~ ^[0-9]+$ ]] && NUCLEOS_JSON="$CPU_CORES"
+    SLOTS_TOTAL_JSON="${TOTAL_SLOTS:-null}"
+    SLOTS_LIVRES_JSON="${SLOTS_LIVRES:-null}"
+    SLOTS_OCUPADOS_JSON="${SLOTS_OCUPADOS:-null}"
+
+    printf '{'
+    printf '"hostname":"%s",' "$(json_escape "$(hostname)")"
+    printf '"modelo":"%s",' "$(json_escape "$MODELO_FULL")"
+    printf '"placa_mae":"%s",' "$(json_escape "$MOTHERBOARD")"
+    printf '"bios":"%s",' "$(json_escape "$BIOS_VER")"
+    printf '"so":"%s",' "$(json_escape "$OS_NAME")"
+    printf '"kernel":"%s",' "$(json_escape "$KERNEL")"
+    printf '"arquitetura":"%s",' "$(json_escape "$ARCH")"
+    printf '"cpu":{"modelo":"%s","nucleos":%s},' "$(json_escape "$CPU_INFO")" "$NUCLEOS_JSON"
+    printf '"memoria":{"total":"%s","slots_total":%s,"slots_livres":%s,"slots_ocupados":%s},' \
+        "$(json_escape "$RAM_INFO")" "$SLOTS_TOTAL_JSON" "$SLOTS_LIVRES_JSON" "$SLOTS_OCUPADOS_JSON"
+    printf '"gpu":"%s",' "$(json_escape "$GPU_INFO")"
+    printf '"discos":[%s],' "$(_juntar_json "${DISCOS_ITENS[@]}")"
+    printf '"armazenamento_raiz":"%s",' "$(json_escape "${STORAGE_USAGE:-}")"
+    printf '"interfaces_rede":[%s],' "$(_juntar_json "${INTERFACES_ITENS[@]}")"
+    printf '"enderecos_mac":[%s],' "$(_juntar_json "${MACS_ITENS[@]}")"
+    printf '"ufw":"%s",' "$(json_escape "$UFW_STATUS")"
+    printf '"tailscale":"%s",' "$(json_escape "$TAILSCALE_STATUS")"
+    printf '"ollama":"%s",' "$(json_escape "$OLLAMA_STATUS")"
+    printf '"runtimes":{"docker":"%s","docker_compose":"%s","git":"%s","python3":"%s","node":"%s","npm":"%s"},' \
+        "$(json_escape "$DOCKER_VER")" "$(json_escape "$COMPOSE_VER")" "$(json_escape "$GIT_VER")" \
+        "$(json_escape "$PYTHON_VER")" "$(json_escape "$NODE_VER")" "$(json_escape "$NPM_VER")"
+    printf '"apps_desktop":[%s]' "$(_juntar_json "${APPS_ITENS[@]}")"
+    printf '}\n'
+fi

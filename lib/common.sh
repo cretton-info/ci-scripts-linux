@@ -75,6 +75,22 @@ has_cmd() {
     command -v "$1" &>/dev/null
 }
 
+# Escapa uma string para entrar com segurança dentro de um valor JSON
+# (aspas, barra invertida, quebra de linha e tabulação). Uso:
+# printf '{"campo":"%s"}' "$(json_escape "$valor")"
+json_escape() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\t'/\\t}"
+    s="${s//$'\r'/}"
+    # Remove qualquer outro caractere de controle restante (ex.: códigos de cor
+    # ANSI de programas que não se comportam bem com --version) — JSON exige
+    # que sejam escapados, e não valem a pena preservar num campo de texto.
+    printf '%s' "$s" | tr -d '\000-\037'
+}
+
 # Envia um alerta em JSON para WEBHOOK_URL (se definida), com cooldown por motivo
 # (evita repetir o mesmo alerta enquanto o problema persiste, ex.: o mesmo cron
 # rodando de novo antes de alguém resolver). Usado por qualquer script para

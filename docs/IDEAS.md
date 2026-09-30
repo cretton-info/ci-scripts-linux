@@ -9,8 +9,13 @@ ideias anotadas para não perder — implementar sob demanda.
   pra `lib/common.sh`, agora usada também por `backup_multiperfil.sh` (origem ausente, tar falhou,
   backup corrompido), `restaurar_backup.sh` (checksum não confere, espaço insuficiente) e
   `manutencao_avancada.sh` (falha em `full-upgrade`/`install -f`).
-- **Modo `--json` em `health_check.sh` e `inventario_universal.sh`**, pra alimentar um dashboard
-  central (Grafana, Uptime Kuma, planilha) sem parsear texto.
+- ~~**Modo `--json` em `health_check.sh` e `inventario_universal.sh`**~~ — feito nos dois, validado
+  com `jq`. `json_escape()` novo em `lib/common.sh` (trata aspas, barras, quebras de linha e
+  caracteres de controle tipo cores ANSI). No caminho, achei e corrigi 3 bugs pré-existentes sem
+  relação direta com o JSON: `free`/`lscpu` sem `LC_ALL=C` nunca casavam a etiqueta traduzida em
+  locale pt_BR (alerta de memória e campo de CPU ficavam sempre vazios/nunca disparavam,
+  silenciosamente); e `detectar_app` sem `</dev/null`+`timeout` travava o inventário inteiro se um
+  app (ex.: Obsidian, Antigravity) não tratasse `--version` direito.
 - **Painel de frota** — script `status_frota.sh` que roda `health_check.sh --json` via SSH em vários
   hosts (lista em `hosts.conf`) e agrega numa tabela só.
 
