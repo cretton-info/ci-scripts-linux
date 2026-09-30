@@ -55,6 +55,22 @@ manualmente), coloque no cron:
 */15 * * * * WEBHOOK_URL="https://seu-n8n.exemplo.com/webhook/alerta" /home/<usuario>/scripts/health_check.sh > /dev/null 2>&1
 ```
 
+### Resumo de conclusão ("estou vivo")
+
+Silêncio total do cron pode significar "tudo bem" ou "o script parou de rodar" — de fora, não dá
+pra diferenciar. Use `--resumo` pra mandar um heartbeat pro webhook mesmo sem nenhum alerta:
+
+```bash
+WEBHOOK_URL="https://seu-n8n.exemplo.com/webhook/alerta" bash ~/scripts/health_check.sh --resumo
+```
+
+Tem cooldown próprio (`RESUMO_COOLDOWN_HORAS`, padrão 24h), então dá pra rodar no mesmo cron de
+`*/15 * * * *` acima que o resumo só sai uma vez por dia:
+
+```
+*/15 * * * * WEBHOOK_URL="https://seu-n8n.exemplo.com/webhook/alerta" /home/<usuario>/scripts/health_check.sh --resumo > /dev/null 2>&1
+```
+
 ## Status de vários hosts de uma vez (frota)
 
 Se você atende mais de um cliente/VPS, o `status_frota.sh` roda `health_check.sh --json` via SSH em

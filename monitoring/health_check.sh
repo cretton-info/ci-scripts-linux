@@ -13,10 +13,15 @@ LIMIAR_DISCO="${LIMIAR_DISCO:-85}"
 LIMIAR_MEM="${LIMIAR_MEM:-90}"
 WEBHOOK_URL="${WEBHOOK_URL:-}"
 ALERTA_COOLDOWN_HORAS="${ALERTA_COOLDOWN_HORAS:-6}"
+RESUMO_COOLDOWN_HORAS="${RESUMO_COOLDOWN_HORAS:-24}"
 
 MODO="texto"
+RESUMO=0
 for arg in "$@"; do
-    [ "$arg" = "--json" ] && MODO="json"
+    case "$arg" in
+        --json) MODO="json" ;;
+        --resumo) RESUMO=1 ;;
+    esac
 done
 
 # Junta itens JSON (ex.: objetos de um array) separados por vírgula.
@@ -65,11 +70,13 @@ fi
 # Usa < <(...) (não "| while") para o array DISCO_ITENS sobreviver fora do loop.
 [ "$MODO" = "texto" ] && echo -e "\n📀 Uso de Disco (partições > ${LIMIAR_DISCO}% em destaque):"
 DISCO_ITENS=()
+DISCO_MAX_PCT=0
 while read -r linha; do
     USO=$(echo "$linha" | awk '{print $5}' | tr -d '%')
     PARTICAO=$(echo "$linha" | awk '{print $1}')
     MONTADO_EM=$(echo "$linha" | awk '{print $NF}')
     ACIMA_LIMIAR="false"
+    [ "$USO" -gt "$DISCO_MAX_PCT" ] 2>/dev/null && DISCO_MAX_PCT="$USO"
     if [ "$USO" -ge "$LIMIAR_DISCO" ] 2>/dev/null; then
         ACIMA_LIMIAR="true"
         [ "$MODO" = "texto" ] && echo "  🔴 $linha"
@@ -116,14 +123,16 @@ fi
 
 # --- Serviços systemd falhando ------------------------------------------
 SERVICOS_FALHANDO_ITENS=()
+N_SERVICOS_FALHANDO=0
 if has_cmd systemctl; then
     FALHAS=$(systemctl list-units --state=failed --no-legend 2>/dev/null)
     if [ -n "$FALHAS" ]; then
+        N_SERVICOS_FALHANDO=$(echo "$FALHAS" | wc -l)
         if [ "$MODO" = "texto" ]; then
             echo -e "\n🛠️  Serviços systemd falhando:"
             echo "$FALHAS"
         fi
-        alert_webhook "servicos_systemd" "$(echo "$FALHAS" | wc -l) serviço(s) em estado de falha"
+        alert_webhook "servicos_systemd" "${N_SERVICOS_FALHANDO} serviço(s) em estado de falha"
         if [ "$MODO" = "json" ]; then
             # Primeiro campo é o marcador visual (●), o nome da unidade é o segundo.
             while read -r _ nome _; do
@@ -165,4 +174,15 @@ else
     printf '"servicos_falhando":[%s],' "$(_juntar_json "${SERVICOS_FALHANDO_ITENS[@]}")"
     printf '"docker_containers":[%s]' "$(_juntar_json "${DOCKER_ITENS[@]}")"
     printf '}\n'
+fi
+
+# --- Resumo de conclusão (opcional, --resumo) ---------------------------
+# Silêncio total do cron pode significar "tudo bem" ou "o cron parou de
+# rodar" — sem diferença nenhuma de fora. Com --resumo, manda um heartbeat
+# pro webhook mesmo sem nenhum problema, pra confirmar que o script ainda
+# está rodando. Usa seu próprio cooldown (bem mais longo que o dos alertas)
+# pra não virar spam.
+if [ "$RESUMO" -eq 1 ]; then
+    DETALHE_RESUMO="mem ${MEM_USO_PCT:-?}%, disco máx ${DISCO_MAX_PCT}%, ${N_SERVICOS_FALHANDO} serviço(s) falhando, internet=${INTERNET_OK}, dns=${DNS_OK}"
+    ALERTA_COOLDOWN_HORAS="$RESUMO_COOLDOWN_HORAS" alert_webhook "resumo" "$DETALHE_RESUMO"
 fi

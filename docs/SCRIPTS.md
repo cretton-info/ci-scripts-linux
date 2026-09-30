@@ -270,6 +270,7 @@ webhook continuam disparando normalmente nesse modo.
 - `WEBHOOK_URL` — se definida, alerta via [`alert_webhook`](#libcommonsh) quando disco/memória
   passam do limiar ou há serviço `systemd` em falha (vazio por padrão — nenhum alerta é enviado).
 - `ALERTA_COOLDOWN_HORAS` — intervalo mínimo entre alertas do mesmo motivo, pra não repetir o mesmo aviso a cada execução enquanto o problema persiste (padrão: `6`).
+- `RESUMO_COOLDOWN_HORAS` — intervalo mínimo entre resumos de conclusão (ver `--resumo` abaixo), independente do cooldown dos alertas (padrão: `24`).
 
 **Conectividade:** testa `ping` para `1.1.1.1` (internet por IP) e `google.com` (resolução DNS),
 2 tentativas de 2s cada. Falha aqui pode ser rede real ou um ambiente que bloqueia ICMP (ex.:
@@ -278,6 +279,12 @@ firewall corporativo, sandbox restrita) — não é necessariamente um problema 
 **Alerta via webhook:** um alerta por partição/serviço/memória que estourar o limiar, via
 `alert_webhook` (ver `lib/common.sh` acima para payload e cooldown). Só é útil de verdade rodando
 via cron (ver `monitoring/README.md`) — chamado manualmente, o alerta só sai na hora que você rodou.
+
+**`--resumo`:** além dos alertas de problema, manda um "heartbeat" pro webhook com um resumo
+(`mem X%, disco máx Y%, N serviço(s) falhando, internet=.../dns=...`) mesmo quando está tudo bem —
+motivo `resumo`, cooldown próprio via `RESUMO_COOLDOWN_HORAS` (padrão 24h, independente do cooldown
+dos alertas normais). Serve pra saber que o cron ainda está rodando: silêncio total pode significar
+"tudo bem" ou "o cron parou", e sem isso não dá pra diferenciar de fora.
 
 **Observações:**
 
