@@ -23,7 +23,7 @@ fi
 
 exibir_ajuda() {
     cat <<EOF
-Uso: sudo $0 [PERFIL]
+Uso: sudo $0 [PERFIL] [--dry-run]
 
 Opções de Perfil de Backup:
   1, docs      Arquivos do Usuário e Documentos (~/Documentos + /etc)
@@ -31,6 +31,8 @@ Opções de Perfil de Backup:
   3, scripts   Projetos de Automação e Scripts (~/scripts + /etc)
   4, tudo      Backup Completo (todas as origens acima)
   --menu       Exibe o menu interativo para seleção
+  --dry-run    Mostra o que seria feito (diretórios, exclusões, tamanho
+               estimado) sem criar, enviar ou apagar nada de verdade
 
 Variáveis de ambiente:
   RETENCAO_DIAS     Dias de retenção dos backups antigos (padrão: 7)
@@ -44,7 +46,17 @@ Variáveis de ambiente:
 EOF
 }
 
-MODO="${1:-}"
+# --dry-run pode vir em qualquer posição junto do perfil (ex.: "homelab --dry-run").
+DRY_RUN=0
+ARGS=()
+for arg in "$@"; do
+    if [ "$arg" = "--dry-run" ]; then
+        DRY_RUN=1
+    else
+        ARGS+=("$arg")
+    fi
+done
+MODO="${ARGS[0]:-}"
 
 if [ -z "$MODO" ] || [ "$MODO" == "--menu" ]; then
     echo "=========================================================="
@@ -90,19 +102,20 @@ esac
 
 # Lock de concorrência: evita que duas execuções do mesmo perfil rodem ao mesmo tempo
 # (ex.: cron disparando de novo enquanto a execução anterior ainda compacta uma origem grande).
-if has_cmd flock; then
+# Não faz sentido travar nada no --dry-run: ele não escreve em lugar nenhum.
+if [ "$DRY_RUN" -eq 0 ] && has_cmd flock; then
     mkdir -p "$DESTINO_BASE"
     LOCK_FILE="${DESTINO_BASE}/.lock_${NOME_PERFIL}"
     exec 200>"$LOCK_FILE"
     if ! flock -n 200; then
         die "Já existe um backup do perfil '${NOME_PERFIL}' em andamento (lock: $LOCK_FILE). Abortando para evitar sobreposição."
     fi
-else
+elif [ "$DRY_RUN" -eq 0 ]; then
     log_warn "Comando 'flock' não encontrado — não é possível evitar execuções sobrepostas deste script."
 fi
 
 DESTINO_FINAL="${DESTINO_BASE}/${NOME_PERFIL}"
-mkdir -p "$DESTINO_FINAL"
+[ "$DRY_RUN" -eq 1 ] || mkdir -p "$DESTINO_FINAL"
 ARQUIVO_FINAL="${DESTINO_FINAL}/backup_${NOME_PERFIL}_${DATA}.tar.gz"
 
 echo "=========================================="
@@ -139,6 +152,15 @@ else
     log_info "Padrões excluídos: ${EXCLUDE_PADRAO[*]}"
 fi
 log_info "Criando arquivo: $ARQUIVO_FINAL"
+
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo ""
+    log_info "[DRY-RUN] Nada será criado, enviado ou apagado. Isto é só uma prévia."
+    log_info "[DRY-RUN] Tamanho estimado (sem contar exclusões nem compressão):"
+    du -sch "${ORIGEM_VALIDA[@]}" 2>/dev/null | tail -n1 | awk '{print "  ~" $1}'
+    echo "=========================================="
+    exit 0
+fi
 
 tar -czf "$ARQUIVO_FINAL" "${TAR_EXCLUDE_ARGS[@]}" "${ORIGEM_VALIDA[@]}" 2>/dev/null
 TAR_EXIT=$?

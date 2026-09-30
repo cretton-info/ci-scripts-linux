@@ -23,7 +23,9 @@ ideias anotadas para não perder — implementar sob demanda.
   tamanho descompactado via `tar -tvzf` e compara com `df` do destino, nos dois modos).
 - ~~**"Simulado de restauração" agendável**~~ — feito: novo script `backup/simulado_restauracao.sh`,
   não interativo, integrado ao `painel.sh` (opção 7) e ao `alert_webhook`.
-- **`--dry-run` na manutenção e no backup**, pra rodar em cliente novo com confiança.
+- ~~**`--dry-run` na manutenção e no backup**~~ — feito nos dois: `manutencao_avancada.sh` usa
+  `apt-get -s` pras etapas de pacote e só avisa nas demais; `backup_multiperfil.sh` mostra
+  diretórios/exclusões/tamanho estimado sem criar nada.
 
 ## 🧪 Testes automatizados
 
