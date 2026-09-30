@@ -16,6 +16,7 @@ lib/logrotate.conf  regra de rotação dos logs, instalada automaticamente em /e
 install.sh       instala os scripts em ~/scripts (flat), compatível com o painel e crontabs
 docs/SCRIPTS.md  referência detalhada de cada script
 docs/BACKUP_REMOTO.md  passo a passo do backup remoto via rclone (Google Drive)
+tests/           testes automatizados (bats-core) de lib/common.sh
 ```
 
 Cada categoria tem seu próprio `README.md` com detalhes de uso. Para a documentação completa de
@@ -78,9 +79,15 @@ nunca é sobrescrito.
 
 ## CI
 
-Todo push/PR roda [ShellCheck](https://www.shellcheck.net/) via GitHub Actions
-(`.github/workflows/shellcheck.yml`). Rode localmente antes de commitar:
+Todo push/PR roda [ShellCheck](https://www.shellcheck.net/) e os testes automatizados via GitHub
+Actions (`.github/workflows/shellcheck.yml`). Rode localmente antes de commitar:
 
 ```bash
 shellcheck **/*.sh
+bats tests/
 ```
+
+`bats` ([bats-core](https://github.com/bats-core/bats-core)) é um framework de testes pra scripts
+Bash. Instale com `sudo apt-get install -y bats` (Debian/Ubuntu) ou veja outras opções no repositório
+oficial. Os testes cobrem as funções de `lib/common.sh` (`has_cmd`, `confirm`, `detect_real_user`,
+`alert_webhook`, etc.) — não precisam de root e não alteram nada no sistema.

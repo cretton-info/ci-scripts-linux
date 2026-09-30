@@ -29,9 +29,11 @@ ideias anotadas para não perder — implementar sob demanda.
 
 ## 🧪 Testes automatizados
 
-- Hoje só tem ShellCheck (lint). Funções puras em `lib/common.sh` (`detect_real_user`, `confirm`,
-  `has_cmd`, parsing de `apps.conf`) são testáveis com **bats-core** sem precisar de root, rodando
-  na mesma esteira do GitHub Actions.
+- ~~**Testes com bats-core para `lib/common.sh`.**~~ — feito: `tests/common.bats` (18 testes) cobre
+  `has_cmd`, `confirm`, `detect_real_user`, `log_*`/`die`, `require_root` e `alert_webhook`
+  (incluindo cooldown), rodando no CI junto do ShellCheck. Parsing de `apps.conf` ficou de fora —
+  vive em `inventario_universal.sh`, não em `lib/common.sh`; precisaria ser extraído pra uma função
+  testável primeiro.
 
 ## ✨ Funcionalidades novas
 
