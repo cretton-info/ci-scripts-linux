@@ -165,6 +165,21 @@ case "$MODO_DESTINO" in
         ;;
 esac
 
+# 3.1 Verificação de espaço livre: evita começar a extrair e falhar pela metade
+# por falta de espaço — especialmente crítico restaurando em / (uma extração
+# interrompida no meio pode deixar o sistema num estado pior que antes).
+log_info "Verificando espaço livre em $TARGET_DIR antes de extrair..."
+TAMANHO_NECESSARIO=$(tar -tvzf "$ARQUIVO_SELECIONADO" 2>/dev/null | awk '{sum+=$3} END{print sum+0}')
+ESPACO_LIVRE=$(df -Pk "$TARGET_DIR" 2>/dev/null | awk 'NR==2{print $4*1024}')
+if [ -n "$TAMANHO_NECESSARIO" ] && [ -n "$ESPACO_LIVRE" ] && [ "$TAMANHO_NECESSARIO" -gt 0 ] && [ "$ESPACO_LIVRE" -gt 0 ]; then
+    if [ "$ESPACO_LIVRE" -lt "$TAMANHO_NECESSARIO" ]; then
+        die "Espaço insuficiente em $TARGET_DIR: necessário ~$(numfmt --to=iec "$TAMANHO_NECESSARIO" 2>/dev/null || echo "${TAMANHO_NECESSARIO} bytes"), disponível $(numfmt --to=iec "$ESPACO_LIVRE" 2>/dev/null || echo "${ESPACO_LIVRE} bytes"). Abortando antes de extrair."
+    fi
+    log_ok "Espaço livre suficiente ($(numfmt --to=iec "$ESPACO_LIVRE" 2>/dev/null || echo "${ESPACO_LIVRE} bytes") disponível, ~$(numfmt --to=iec "$TAMANHO_NECESSARIO" 2>/dev/null || echo "${TAMANHO_NECESSARIO} bytes") necessário)."
+else
+    log_warn "Não foi possível estimar o espaço necessário/disponível — prosseguindo sem essa verificação."
+fi
+
 # 4. Execução da Restauração
 echo ""
 echo "📦 Extraindo $(basename "$ARQUIVO_SELECIONADO")..."
