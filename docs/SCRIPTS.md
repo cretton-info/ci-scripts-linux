@@ -84,7 +84,13 @@ lista na hora de escolher o que restaurar.
 sudo ~/scripts/backup_multiperfil.sh homelab      # direto por parâmetro (cron)
 sudo ~/scripts/backup_multiperfil.sh --menu       # menu interativo
 sudo ~/scripts/backup_multiperfil.sh --help       # ajuda
+sudo ~/scripts/backup_multiperfil.sh homelab --dry-run   # só mostra o que faria
 ```
+
+**`--dry-run`:** mostra os diretórios incluídos, os padrões excluídos e um tamanho estimado (sem
+contar exclusões nem compressão) — e sai, sem criar o `.tar.gz`, sem travar o lock, sem enviar pro
+remoto e sem apagar backups antigos. Bom pra conferir a configuração de um cliente novo antes de
+deixar rodando de verdade.
 
 **Variáveis de ambiente:**
 
@@ -388,7 +394,14 @@ pendente.
 sudo ~/scripts/manutencao_avancada.sh          # interativo
 sudo ~/scripts/manutencao_avancada.sh --yes    # sem confirmação (cron)
 AUTO_YES=1 sudo -E ~/scripts/manutencao_avancada.sh   # equivalente ao --yes
+sudo ~/scripts/manutencao_avancada.sh --dry-run       # só mostra o que faria
 ```
+
+**`--dry-run`:** mostra o que cada uma das 9 etapas faria, sem alterar nada de verdade. Nas etapas
+de pacotes (1, 2 e 3) usa o modo `--simulate` (`-s`) nativo do `apt-get`, que lista os pacotes reais
+que seriam instalados/removidos. Nas demais, só avisa o que não foi executado (ex.: tamanho atual
+dos logs do journal, revisões do Snap que seriam removidas). Ainda precisa de `sudo` porque algumas
+consultas (`apt-get -s`, `journalctl`) exigem privilégio mesmo só pra simular.
 
 **O que faz, em ordem (9 etapas):**
 

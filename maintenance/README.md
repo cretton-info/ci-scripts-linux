@@ -22,6 +22,13 @@ AUTO_YES=1 sudo -E ~/scripts/manutencao_avancada.sh
 **Etapas puladas automaticamente se a ferramenta não estiver instalada:** Flatpak, Snap, Docker,
 `fstrim`. Nada trava por falta de uma delas.
 
+**Quer ver o que ele faria antes de rodar de verdade?** Use `--dry-run` — mostra cada etapa (com
+simulação real do `apt-get` pra pacotes) sem instalar, remover ou apagar nada:
+
+```bash
+sudo ~/scripts/manutencao_avancada.sh --dry-run
+```
+
 **Variáveis de ambiente:**
 
 - `JOURNAL_MAX_SIZE` — tamanho máximo dos logs do journal (padrão: `200M`)

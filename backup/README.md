@@ -19,6 +19,9 @@ sudo ~/scripts/backup_multiperfil.sh homelab
 # Menu interativo
 sudo ~/scripts/backup_multiperfil.sh --menu
 
+# Só mostrar o que faria, sem criar nada de verdade
+sudo ~/scripts/backup_multiperfil.sh homelab --dry-run
+
 # Restauração (sempre requer sudo)
 sudo ~/scripts/restaurar_backup.sh
 ```
