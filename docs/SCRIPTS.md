@@ -73,6 +73,8 @@ sudo ~/scripts/backup_multiperfil.sh --help       # ajuda
 **Variáveis de ambiente:**
 
 - `RETENCAO_DIAS` — dias de retenção antes de apagar backups antigos do mesmo perfil (padrão: `7`).
+  Precisa ser um inteiro >= 1; valores inválidos (0, negativo, texto) fazem o script recusar
+  execução, em vez de arriscar apagar backups recém-criados na primeira rotação.
 - `EXCLUDE_PATTERNS` — padrões extras a excluir do `.tar.gz`, separados por vírgula (ex.:
   `"*.log,tmp/*"`), somados aos padrões padrão sempre excluídos: `.git`, `node_modules`,
   `__pycache__`, `.cache`. Use `sudo -E` para a variável chegar ao processo com privilégio.
