@@ -11,11 +11,14 @@
 sudo ~/scripts/setup_pos_instalacao.sh
 bash ~/scripts/inventario_universal.sh          # sem sudo: tudo menos modelo/placa-mãe/BIOS/slots de RAM
 sudo ~/scripts/inventario_universal.sh          # com sudo: inventário completo (via dmidecode)
+bash ~/scripts/inventario_universal.sh --json   # saída em JSON, não grava nada em disco
 ```
 
-Cada execução sobrescreve `~/inventario/hardware_<modelo>.md` e `~/inventario/software_<modelo>.md`
-(o `<modelo>` vem do `dmidecode -s system-product-name`, ou do hostname sem `sudo`/sem dados de
-BIOS) — bom para levar pro Obsidian ou documentar a entrada de um cliente.
+Cada execução (exceto `--json`) sobrescreve `~/inventario/hardware_<modelo>.md` e
+`~/inventario/software_<modelo>.md` (o `<modelo>` vem do `dmidecode -s system-product-name`, ou do
+hostname sem `sudo`/sem dados de BIOS) — bom para levar pro Obsidian ou documentar a entrada de um
+cliente. O modo `--json` é só leitura: imprime os mesmos dados em JSON pra stdout e não toca em
+`~/inventario/` — pensado pra rodar com frequência num dashboard sem acumular arquivo repetido.
 
 A lista de apps verificados vem de `apps.conf` (instalado junto em `~/scripts/apps.conf`) — edite
 esse arquivo para adicionar/remover apps sem tocar no script. Uma reinstalação (`install.sh`) nunca

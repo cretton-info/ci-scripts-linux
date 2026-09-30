@@ -25,6 +25,7 @@ Não é executado diretamente — é a biblioteca compartilhada que todo script 
 | `confirm "pergunta"` | Pergunta s/N interativa. Retorna 0 (sucesso) se a resposta for `s`/`S`. |
 | `has_cmd nome` | Retorna 0 se o comando `nome` existe no `PATH`. |
 | `alert_webhook "motivo" "detalhe"` | Envia um alerta em JSON para `WEBHOOK_URL` (se definida), com cooldown por motivo. Usado por qualquer script para reportar falhas — não faz nada se `WEBHOOK_URL` não estiver definida. |
+| `json_escape "valor"` | Escapa uma string pra entrar com segurança dentro de um valor JSON (aspas, barra invertida, quebra de linha, tab e outros caracteres de controle, ex.: cores ANSI). Usado pelo modo `--json` de `health_check.sh` e `inventario_universal.sh`. |
 | `LOG_FILE` | Caminho do arquivo de log da execução atual (definido automaticamente ao sourcear). |
 
 **Log automático:** toda chamada a `log_warn`/`log_error`/`die` grava uma linha com timestamp e PID
@@ -249,7 +250,15 @@ processos por CPU, top 5 processos por RAM, conectividade com a internet e resol
 ```bash
 bash ~/scripts/health_check.sh
 LIMIAR_DISCO=90 LIMIAR_MEM=95 bash ~/scripts/health_check.sh
+bash ~/scripts/health_check.sh --json          # saída em JSON pra dashboard/script
 ```
+
+**`--json`:** imprime um único objeto JSON em vez do texto colorido (nada de `echo` decorado) — só
+dados, pra alimentar um dashboard, um `jq`, ou qualquer outra automação sem precisar interpretar
+texto. Campos: `hostname`, `data`, `cpu_modelo`, `uptime`, `memoria_uso_pct`, `disco` (array),
+`top_cpu`/`top_mem` (arrays), `conectividade` (`internet`/`dns` booleanos), `servicos_falhando`
+(array de nomes) e `docker_containers` (array, vazio se Docker não estiver instalado). Os alertas via
+webhook continuam disparando normalmente nesse modo.
 
 **Variáveis de ambiente:**
 
@@ -271,6 +280,9 @@ via cron (ver `monitoring/README.md`) — chamado manualmente, o alerta só sai 
 
 - Se rodado sem permissão de acessar o socket do Docker, mostra `[WARN]` em vez de travar.
 - Não grava nada no sistema — só leitura e exibição (exceto os arquivos de cooldown do webhook, se usado).
+- O cálculo de uso de memória usa `LC_ALL=C free` internamente — em locales que traduzem a etiqueta
+  `Mem:` (ex.: pt_BR usa `Mem.`), o `free` sem essa variável faz o cálculo (e o alerta) nunca
+  disparar, silenciosamente.
 
 ---
 
@@ -355,9 +367,18 @@ em fallback (modelo = hostname) sem travar o resto.
 ```bash
 bash ~/scripts/inventario_universal.sh          # sem modelo/placa-mãe/BIOS/slots de RAM
 sudo ~/scripts/inventario_universal.sh          # inventário completo
+bash ~/scripts/inventario_universal.sh --json   # saída em JSON, sem gravar nada em disco
 ```
 
-**O que grava no sistema:** a cada execução, sobrescreve
+**`--json`:** imprime um único objeto JSON pra stdout em vez de mostrar na tela — e, diferente do
+modo normal, **não grava os relatórios `.md`** (é um modo "só dados", pensado pra rodar com
+frequência num dashboard sem acumular arquivo repetido). Campos: `hostname`, `modelo`, `placa_mae`,
+`bios`, `so`, `kernel`, `arquitetura`, `cpu` (`modelo`/`nucleos`), `memoria` (`total`/slots), `gpu`,
+`discos` (array), `armazenamento_raiz`, `interfaces_rede` (array), `enderecos_mac` (array), `ufw`,
+`tailscale`, `ollama`, `runtimes` (docker/compose/git/python3/node/npm) e `apps_desktop` (array de
+`nome`/`status`).
+
+**O que grava no sistema (modo normal, sem `--json`):** a cada execução, sobrescreve
 `~/inventario/hardware_<modelo>.md` e `~/inventario/software_<modelo>.md` — `<modelo>` é a primeira
 palavra do `dmidecode -s system-product-name` (ou o hostname, sem `sudo` ou sem dados de BIOS). Os
 arquivos ficam na home do usuário real, mesmo rodando com `sudo` (`chown` de volta pro usuário real
@@ -365,11 +386,15 @@ no fim). Útil para levar pro Obsidian ou documentar o estado de uma máquina de
 
 **Detecção de apps desktop:** a lista de apps vem de `apps.conf` (instalado junto em
 `~/scripts/apps.conf`, formato `Nome|termo de busca|comando1,comando2,...` documentado no próprio
-arquivo). Para cada app, verifica nesta ordem — comando no `PATH`, pacote `apt`, `flatpak`, `snap`,
-atalho `.desktop` em `/usr/share/applications` ou `~/.local/share/applications` — e para no primeiro
-método que encontrar. Se `apps.conf` não existir, cai para uma lista padrão embutida reduzida
-(Obsidian, VS Code, Antigravity, Wine). **Uma reinstalação (`install.sh`) nunca sobrescreve um
-`apps.conf` já existente** — edite-o livremente para adicionar/remover apps.
+arquivo). Para cada app, verifica nesta ordem — comando no `PATH` (com `timeout 3` e stdin
+redirecionado de `/dev/null`, pra não travar nem quebrar a leitura do `apps.conf` se o app ignorar
+`--version`), pacote `apt`, `flatpak`, `snap`, atalho `.desktop` em `/usr/share/applications` ou
+`~/.local/share/applications` — e para no primeiro método que encontrar. Se `apps.conf` não existir,
+cai para uma lista padrão embutida reduzida (Obsidian, VS Code, Antigravity, Wine). **Uma
+reinstalação (`install.sh`) nunca sobrescreve um `apps.conf` já existente** — edite-o livremente
+para adicionar/remover apps. Alguns apps Electron (Obsidian, Antigravity) não tratam `--version`
+direito e chegam a abrir a janela normal antes do timeout cortar — a detecção funciona mesmo assim,
+só a "versão" exibida pra eles é decorativa (ver aviso em `provisioning/apps.conf`).
 
 **Slots de memória:** usa `dmidecode -t 17`, contando entradas "Memory Device" (total de slots) e
 quantas têm `Size: No Module Installed` (slots livres). Em VMs sem BIOS/firmware completo, o
@@ -377,6 +402,9 @@ quantas têm `Size: No Module Installed` (slots livres). Em VMs sem BIOS/firmwar
 
 Útil para documentar o estado de uma máquina de cliente na entrada de um contrato, ou para
 diagnóstico rápido remoto.
+
+O modelo da CPU usa `LC_ALL=C lscpu` internamente — em locales que traduzem a etiqueta `Model name`
+(ex.: pt_BR usa `Nome do modelo`), o `lscpu` sem essa variável deixava o campo sempre vazio.
 
 ---
 
