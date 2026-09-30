@@ -102,6 +102,16 @@ No crontab:
 
 O arquivo acaba em `<remote>/<perfil>/`, ex.: `b2:meu-bucket/cliente-x/homelab/`.
 
+**Mais de um destino (redundância 3-2-1):** separe por vírgula pra enviar o mesmo backup pra vários
+lugares — ex.: um provedor S3-compatível + o Google Drive:
+
+```bash
+RCLONE_REMOTO="b2:meu-bucket/cliente-x,gdrive:backups-cliente-x" sudo -E ~/scripts/backup_multiperfil.sh homelab
+```
+
+Cada destino é enviado de forma independente — a falha num (rede fora do ar, cota cheia) não impede
+o envio pros outros, e cada um gera seu próprio aviso/alerta se falhar.
+
 Flags extras do rclone (ex.: `--transfers 4`) via `RCLONE_FLAGS`:
 
 ```bash
