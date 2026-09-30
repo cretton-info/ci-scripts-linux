@@ -120,6 +120,7 @@ for dir in "${ORIGEM_SOLICITADA[@]}"; do
 done
 
 if [ "${#ORIGEM_VALIDA[@]}" -eq 0 ]; then
+    alert_webhook "backup_sem_origem" "Perfil '${NOME_PERFIL}': nenhuma das origens configuradas existe neste sistema."
     die "Nenhum dos diretórios especificados para o perfil '$NOME_PERFIL' existe neste sistema."
 fi
 
@@ -147,6 +148,7 @@ if [ "$TAR_EXIT" -eq 0 ] || [ "$TAR_EXIT" -eq 1 ]; then
     log_ok "Backup criado! Tamanho: $(du -sh "$ARQUIVO_FINAL" | awk '{print $1}')"
 else
     rm -f "$ARQUIVO_FINAL"
+    alert_webhook "backup_tar_falhou" "Perfil '${NOME_PERFIL}': tar falhou com código ${TAR_EXIT}."
     die "Erro ao criar arquivo de backup (código tar: $TAR_EXIT)."
 fi
 
@@ -156,6 +158,7 @@ fi
 log_info "Verificando integridade do backup..."
 if ! tar -tzf "$ARQUIVO_FINAL" > /dev/null 2>&1; then
     rm -f "$ARQUIVO_FINAL"
+    alert_webhook "backup_corrompido" "Perfil '${NOME_PERFIL}': backup saiu corrompido logo após a criação. Arquivo removido."
     die "Backup corrompido logo após a criação (falha ao listar o conteúdo do .tar.gz). Arquivo removido."
 fi
 

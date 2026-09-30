@@ -14,44 +14,6 @@ LIMIAR_MEM="${LIMIAR_MEM:-90}"
 WEBHOOK_URL="${WEBHOOK_URL:-}"
 ALERTA_COOLDOWN_HORAS="${ALERTA_COOLDOWN_HORAS:-6}"
 
-# Envia um alerta em JSON para WEBHOOK_URL quando definido, com um cooldown por
-# motivo (evita mandar o mesmo alerta repetidamente enquanto o problema persiste).
-enviar_alerta() {
-    local motivo="$1" detalhe="$2"
-    [ -n "$WEBHOOK_URL" ] || return 0
-    if ! has_cmd curl; then
-        log_warn "WEBHOOK_URL definido mas curl não encontrado — alerta não enviado."
-        return 0
-    fi
-
-    local estado_dir chave arquivo_estado
-    estado_dir="$(dirname "$LOG_FILE" 2>/dev/null)/alertas"
-    mkdir -p "$estado_dir" 2>/dev/null || estado_dir="/tmp/ci-scripts-linux-alertas"
-    mkdir -p "$estado_dir" 2>/dev/null || true
-    chave=$(echo "$motivo" | tr -cs '[:alnum:]' '_')
-    arquivo_estado="${estado_dir}/${chave}.last"
-
-    if [ -f "$arquivo_estado" ]; then
-        local ultimo_ts agora_ts
-        ultimo_ts=$(cat "$arquivo_estado" 2>/dev/null || echo 0)
-        agora_ts=$(date +%s)
-        if [ $(( (agora_ts - ultimo_ts) / 3600 )) -lt "$ALERTA_COOLDOWN_HORAS" ]; then
-            return 0
-        fi
-    fi
-
-    local payload
-    payload=$(printf '{"hostname":"%s","motivo":"%s","detalhe":"%s","data":"%s"}' \
-        "$(hostname)" "$motivo" "$detalhe" "$(date '+%Y-%m-%d %H:%M:%S')")
-
-    if curl -fsS -m 10 -X POST -H 'Content-Type: application/json' -d "$payload" "$WEBHOOK_URL" >/dev/null 2>&1; then
-        date +%s > "$arquivo_estado" 2>/dev/null || true
-        log_info "Alerta enviado via webhook: ${motivo} (${detalhe})"
-    else
-        log_warn "Falha ao enviar alerta via webhook para: ${motivo}"
-    fi
-}
-
 echo "=========================================================="
 echo " 🔍 SAÚDE DO SISTEMA — $(hostname) — $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=========================================================="
@@ -71,7 +33,7 @@ free -h
 MEM_USO_PCT=$(free | awk '/^Mem:/{printf "%.0f", ($3/$2)*100}')
 if [ -n "$MEM_USO_PCT" ] && [ "$MEM_USO_PCT" -ge "$LIMIAR_MEM" ] 2>/dev/null; then
     log_warn "Uso de memória em ${MEM_USO_PCT}% (limiar: ${LIMIAR_MEM}%)"
-    enviar_alerta "memoria" "${MEM_USO_PCT}% em uso (limiar ${LIMIAR_MEM}%)"
+    alert_webhook "memoria" "${MEM_USO_PCT}% em uso (limiar ${LIMIAR_MEM}%)"
 fi
 
 echo -e "\n📀 Uso de Disco (partições > ${LIMIAR_DISCO}% em destaque):"
@@ -81,7 +43,7 @@ df -hP --exclude-type=tmpfs --exclude-type=devtmpfs | tail -n +2 | while read -r
     MONTADO_EM=$(echo "$linha" | awk '{print $NF}')
     if [ "$USO" -ge "$LIMIAR_DISCO" ] 2>/dev/null; then
         echo "  🔴 $linha"
-        enviar_alerta "disco_${MONTADO_EM}" "${PARTICAO} em ${MONTADO_EM} com ${USO}% (limiar ${LIMIAR_DISCO}%)"
+        alert_webhook "disco_${MONTADO_EM}" "${PARTICAO} em ${MONTADO_EM} com ${USO}% (limiar ${LIMIAR_DISCO}%)"
     else
         echo "     $linha"
     fi
@@ -110,7 +72,7 @@ if has_cmd systemctl; then
     FALHAS=$(systemctl list-units --state=failed --no-legend 2>/dev/null)
     if [ -n "$FALHAS" ]; then
         echo "$FALHAS"
-        enviar_alerta "servicos_systemd" "$(echo "$FALHAS" | wc -l) serviço(s) em estado de falha"
+        alert_webhook "servicos_systemd" "$(echo "$FALHAS" | wc -l) serviço(s) em estado de falha"
     else
         log_ok "Nenhum serviço em estado de falha."
     fi

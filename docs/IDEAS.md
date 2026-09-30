@@ -5,10 +5,10 @@ ideias anotadas para não perder — implementar sob demanda.
 
 ## 🔔 Observabilidade
 
-- **Estender o webhook de alerta além do `health_check.sh`.** Hoje só ele avisa (disco/memória/
-  serviço). Extrair a lógica de envio pra `lib/common.sh` como `alert_webhook()` reutilizável e
-  chamar nos pontos de falha de `backup_multiperfil.sh` (tar corrompido, origens ausentes),
-  `restaurar_backup.sh` (checksum não bate) e `manutencao_avancada.sh` (falha grave de pacotes).
+- ~~**Estender o webhook de alerta além do `health_check.sh`.**~~ — feito: `alert_webhook()` movida
+  pra `lib/common.sh`, agora usada também por `backup_multiperfil.sh` (origem ausente, tar falhou,
+  backup corrompido), `restaurar_backup.sh` (checksum não confere, espaço insuficiente) e
+  `manutencao_avancada.sh` (falha em `full-upgrade`/`install -f`).
 - **Modo `--json` em `health_check.sh` e `inventario_universal.sh`**, pra alimentar um dashboard
   central (Grafana, Uptime Kuma, planilha) sem parsear texto.
 - **Painel de frota** — script `status_frota.sh` que roda `health_check.sh --json` via SSH em vários
