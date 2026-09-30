@@ -43,8 +43,9 @@ ideias anotadas para não perder — implementar sob demanda.
 
 ## ✨ Funcionalidades novas
 
-- **Notificação de conclusão, não só de falha** — resumo diário/semanal via webhook. Silêncio total
-  também pode significar "o cron parou", não só "está tudo bem".
+- ~~**Notificação de conclusão, não só de falha**~~ — feito: `health_check.sh --resumo` manda um
+  heartbeat pro webhook mesmo sem alerta, cooldown próprio via `RESUMO_COOLDOWN_HORAS` (padrão 24h,
+  independente do cooldown dos alertas).
 - **Múltiplos destinos rclone simultâneos** (`RCLONE_REMOTO` como lista separada por vírgula) pra
   redundância 3-2-1 real.
 - **`update.sh`** — `git pull` + `sudo ./install.sh` numa linha só.
