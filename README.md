@@ -114,3 +114,6 @@ bats tests/
 Bash. Instale com `sudo apt-get install -y bats` (Debian/Ubuntu) ou veja outras opções no repositório
 oficial. Os testes cobrem as funções de `lib/common.sh` (`has_cmd`, `confirm`, `detect_real_user`,
 `alert_webhook`, etc.) — não precisam de root e não alteram nada no sistema.
+
+## Convenção: documentação antes do commit
+Antes de cada commit, a documentação relevante (docs/, README, CHANGELOG) deve estar atualizada com o que mudou — não depois, não "numa próxima passada". Commit sem doc desatualizada bate, não o contrário.
