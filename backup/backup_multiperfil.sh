@@ -50,6 +50,22 @@ Variáveis de ambiente:
 EOF
 }
 
+# -h/--help nao precisa de root, mesmo sendo o primeiro uso do script.
+for arg in "$@"; do
+    if [ "$arg" = "-h" ] || [ "$arg" = "--help" ]; then
+        exibir_ajuda
+        exit 0
+    fi
+done
+
+# Todos os perfis incluem /etc (chaves SSH, segredos do Dokploy, /etc/shadow
+# etc.) - sem root o tar falha com "Permission denied" em dezenas de arquivos
+# e sai com codigo 2, que o script trata como erro fatal (ver mais abaixo) e
+# apaga o archive parcial. Antes isso so aparecia como um "codigo tar: 2"
+# sem explicacao nenhuma - falha real encontrada testando o painel no ac8
+# em 2026-10-01. Documentado no uso ("sudo $0 [PERFIL]") mas nunca imposto.
+require_root
+
 # --dry-run pode vir em qualquer posição junto do perfil (ex.: "homelab --dry-run").
 DRY_RUN=0
 ARGS=()
@@ -166,7 +182,8 @@ if [ "$DRY_RUN" -eq 1 ]; then
     exit 0
 fi
 
-tar -czf "$ARQUIVO_FINAL" "${TAR_EXCLUDE_ARGS[@]}" "${ORIGEM_VALIDA[@]}" 2>/dev/null
+TAR_ERR_LOG=$(mktemp)
+tar -czf "$ARQUIVO_FINAL" "${TAR_EXCLUDE_ARGS[@]}" "${ORIGEM_VALIDA[@]}" 2>"$TAR_ERR_LOG"
 TAR_EXIT=$?
 
 # Códigos 0 (sucesso) e 1 (arquivos alterados durante leitura) são válidos
@@ -174,9 +191,18 @@ if [ "$TAR_EXIT" -eq 0 ] || [ "$TAR_EXIT" -eq 1 ]; then
     log_ok "Backup criado! Tamanho: $(du -sh "$ARQUIVO_FINAL" | awk '{print $1}')"
 else
     rm -f "$ARQUIVO_FINAL"
+    # Mostra as primeiras linhas do erro real do tar - antes isso ia pro
+    # /dev/null e só sobrava o código numérico, sem pista nenhuma do motivo
+    # (achado real testando o painel no ac8 em 2026-10-01: a causa era
+    # "Permission denied" em arquivos de /etc por rodar sem root, mas a
+    # mensagem original não dava nenhuma dica disso).
+    log_error "Saída do tar (primeiras linhas):"
+    head -5 "$TAR_ERR_LOG" >&2
     alert_webhook "backup_tar_falhou" "Perfil '${NOME_PERFIL}': tar falhou com código ${TAR_EXIT}."
+    rm -f "$TAR_ERR_LOG"
     die "Erro ao criar arquivo de backup (código tar: $TAR_EXIT)."
 fi
+rm -f "$TAR_ERR_LOG"
 
 # 3. Verificação de integridade: garante que o .tar.gz não está corrompido
 # antes de confiar nele, e grava um checksum para detectar corrupção futura

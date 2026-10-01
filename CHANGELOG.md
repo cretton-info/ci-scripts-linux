@@ -7,6 +7,19 @@ Histórico de mudanças do `ci-scripts-linux`. Formato baseado em
 Pra saber a versão instalada numa máquina: `painel` mostra no cabeçalho, ou confira
 `~/scripts/VERSION` diretamente.
 
+## [Não lançado]
+
+### Corrigido
+
+- `backup_multiperfil.sh` agora exige root de verdade (`require_root`) antes de rodar — todos os
+  4 perfis incluem `/etc` (chaves SSH, segredos do Dokploy, `/etc/shadow`), então sem sudo o `tar`
+  sempre falhava com "Permission denied" em dezenas de arquivos e saía com código 2, sem nenhuma
+  pista do motivo (a mensagem de erro do `tar` ia pro `/dev/null`). `-h`/`--help` continua
+  funcionando sem root. Achado real testando o `painel` no `ac8` em 2026-10-01.
+- `backup_multiperfil.sh` não suprime mais o `stderr` do `tar` — se o backup falhar de verdade por
+  outro motivo no futuro, as primeiras linhas do erro real aparecem no log em vez de só o código
+  numérico.
+
 ## [1.0.0] — 2026-09-30
 
 Primeira versão tagueada. Reúne tudo que existia até aqui — o repositório já vinha evoluindo desde
