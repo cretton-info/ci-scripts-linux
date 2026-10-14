@@ -11,6 +11,12 @@ source "${SCRIPT_DIR}/../lib/common.sh" 2>/dev/null || source "${SCRIPT_DIR}/lib
 
 detect_real_user
 
+# Configuração persistente ao lado do script (gravada uma vez pelo install.sh, não
+# sobrescrita numa reinstalação). Variáveis já definidas no ambiente têm prioridade.
+# Lida sem "source": o arquivo é do usuário comum e este script roda como root.
+BACKUP_CONF="${BACKUP_CONF:-${SCRIPT_DIR}/backup.conf}"
+load_conf "$BACKUP_CONF" RETENCAO_DIAS EXCLUDE_PATTERNS RCLONE_REMOTO RCLONE_FLAGS WEBHOOK_URL
+
 DESTINO_BASE="${USER_HOME}/backups_sistema"
 RETENCAO_DIAS="${RETENCAO_DIAS:-7}"
 DATA=$(date +%Y-%m-%d_%H%M%S)
@@ -34,6 +40,10 @@ Opções de Perfil de Backup:
   --dry-run    Mostra o que seria feito (diretórios, exclusões, tamanho
                estimado) sem criar, enviar ou apagar nada de verdade
 
+Configuração: as variáveis abaixo podem ficar em ${SCRIPT_DIR}/backup.conf
+(uma por linha, VAR=valor) para não precisar de "sudo -E" a cada execução.
+Uma variável definida no ambiente tem prioridade sobre o arquivo.
+
 Variáveis de ambiente:
   RETENCAO_DIAS     Dias de retenção dos backups antigos (padrão: 7)
   EXCLUDE_PATTERNS  Padrões extras a excluir do backup, separados por vírgula
@@ -45,7 +55,11 @@ Variáveis de ambiente:
                     Aceita mais de um destino separados por vírgula (ex.:
                     "b2:bucket-x,gdrive:pasta-y") pra redundância 3-2-1 —
                     cada um é enviado de forma independente, e a falha num
-                    não impede o envio pros outros.
+                    não impede o envio pros outros. Um destino que é caminho
+                    local (ex.: um HD externo em /media/...) precisa existir
+                    antes; se não existir (disco desmontado), é pulado.
+                    Rodando via sudo, o rclone roda como o usuário real
+                    (usa o rclone.conf dele, não o do root).
   RCLONE_FLAGS      Flags extras passadas ao rclone (ex.: "--fast-list").
 EOF
 }
@@ -228,15 +242,33 @@ if [ -n "${RCLONE_REMOTO:-}" ]; then
     if ! has_cmd rclone; then
         log_warn "RCLONE_REMOTO definido mas rclone não encontrado — envio remoto pulado."
     else
+        # Via sudo, o rclone roda como o usuário real: usa o rclone.conf dele (onde
+        # os remotes foram configurados) e não grava como root nem no destino nem
+        # no rclone.conf (o rclone reescreve o arquivo ao renovar o token OAuth).
+        rclone_usuario() {
+            if [ "$EUID" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$REAL_USER" != "root" ]; then
+                sudo -u "$REAL_USER" -H rclone "$@"
+            else
+                rclone "$@"
+            fi
+        }
         IFS=',' read -r -a RCLONE_DESTINOS <<< "$RCLONE_REMOTO"
         for remoto in "${RCLONE_DESTINOS[@]}"; do
             [ -n "$remoto" ] || continue
+            # Destino local (HD externo/segundo disco): sem ele montado, o rclone
+            # criaria a pasta no disco do sistema e o "backup externo" ficaria no
+            # mesmo disco do original. Exige que a pasta já exista.
+            if [[ "$remoto" == /* ]] && [ ! -d "$remoto" ]; then
+                log_warn "Destino local $remoto não existe (disco desmontado?) — envio pulado."
+                alert_webhook "backup_destino_local_ausente" "Perfil '${NOME_PERFIL}': destino local ${remoto} não existe."
+                continue
+            fi
             RCLONE_DESTINO="${remoto%/}/${NOME_PERFIL}/"
             log_info "Enviando backup para remoto: $RCLONE_DESTINO"
             # rclone copy aceita só um arquivo de origem por vez (dest é sempre um diretório aqui)
             # shellcheck disable=SC2086
-            if rclone copy "$ARQUIVO_FINAL" "$RCLONE_DESTINO" ${RCLONE_FLAGS:-} 2>&1 | tee -a "${LOG_FILE:-/dev/null}" \
-                && rclone copy "$CHECKSUM_FINAL" "$RCLONE_DESTINO" ${RCLONE_FLAGS:-} 2>&1 | tee -a "${LOG_FILE:-/dev/null}"; then
+            if rclone_usuario copy "$ARQUIVO_FINAL" "$RCLONE_DESTINO" ${RCLONE_FLAGS:-} 2>&1 | tee -a "${LOG_FILE:-/dev/null}" \
+                && rclone_usuario copy "$CHECKSUM_FINAL" "$RCLONE_DESTINO" ${RCLONE_FLAGS:-} 2>&1 | tee -a "${LOG_FILE:-/dev/null}"; then
                 log_ok "Backup enviado ao remoto: $RCLONE_DESTINO"
             else
                 log_warn "Falha ao enviar backup ao remoto ($RCLONE_DESTINO) — backup local preservado."

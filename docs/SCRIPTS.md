@@ -22,6 +22,7 @@ Não é executado diretamente — é a biblioteca compartilhada que todo script 
 | `die "msg"` | Chama `log_error` e encerra o script com `exit 1`. |
 | `require_root` | Aborta (`die`) se o script não estiver rodando como root/sudo. |
 | `detect_real_user` | Preenche `REAL_USER` e `USER_HOME` com o usuário real por trás do `sudo` (usa `getent passwd`, não `eval`). |
+| `load_conf arquivo VAR...` | Lê `VAR=valor` de um arquivo **sem executá-lo** (nunca faz `source`), aceitando só os nomes passados, tirando aspas em volta do valor e sem sobrescrever o que já veio do ambiente. Usado pelo `backup_multiperfil.sh` para o `backup.conf`. |
 | `confirm "pergunta"` | Pergunta s/N interativa. Retorna 0 (sucesso) se a resposta for `s`/`S`. |
 | `has_cmd nome` | Retorna 0 se o comando `nome` existe no `PATH`. |
 | `alert_webhook "motivo" "detalhe"` | Envia um alerta em JSON para `WEBHOOK_URL` (se definida), com cooldown por motivo. Usado por qualquer script para reportar falhas — não faz nada se `WEBHOOK_URL` não estiver definida. |
@@ -93,6 +94,11 @@ contar exclusões nem compressão) — e sai, sem criar o `.tar.gz`, sem travar 
 remoto e sem apagar backups antigos. Bom pra conferir a configuração de um cliente novo antes de
 deixar rodando de verdade.
 
+**Configuração:** as variáveis abaixo podem ficar em `~/scripts/backup.conf` (`VAR=valor`, uma
+por linha), que o `install.sh` cria a partir de `backup/backup.conf` na primeira instalação e não
+sobrescreve depois. O arquivo é lido sem ser executado (só as variáveis desta lista são aceitas), e
+uma variável definida no ambiente tem prioridade sobre ele. `BACKUP_CONF` aponta para outro arquivo.
+
 **Variáveis de ambiente:**
 
 - `RETENCAO_DIAS` — dias de retenção antes de apagar backups antigos do mesmo perfil (padrão: `7`).
@@ -109,7 +115,11 @@ deixar rodando de verdade.
   rotação, e alerta via [`alert_webhook`](#libcommonsh) se `WEBHOOK_URL` estiver definida. Aceita
   **mais de um destino separados por vírgula** (ex.: `"b2:bucket-x,gdrive:pasta-y"`) pra redundância
   3-2-1 real — cada destino é enviado de forma independente, a falha num não impede o envio pros
-  outros. Use `sudo -E` para a variável chegar ao processo com privilégio.
+  outros. Um destino que começa com `/` é uma pasta local (ex.: segundo HD); ela precisa existir,
+  senão o envio pra ela é pulado com aviso (e alerta via webhook), para não gravar no disco do
+  sistema quando o HD está desmontado. Via `sudo`, o rclone roda como o usuário real, com o
+  `rclone.conf` dele. Defina em `backup.conf` ou use `sudo -E` para a variável chegar ao processo
+  com privilégio.
 - `RCLONE_FLAGS` — flags extras passadas ao `rclone copy` (ex.: `"--transfers 4"`).
 - `WEBHOOK_URL` — se definida, alerta via [`alert_webhook`](#libcommonsh) quando não há nenhuma
   origem válida para o perfil, o `tar` falha, ou o backup sai corrompido logo após a criação.

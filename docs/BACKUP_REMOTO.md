@@ -21,14 +21,20 @@ ler `/etc`. O rclone guarda a configuração (com o token OAuth do Google) em
 `~/.config/rclone/rclone.conf` — **do usuário que roda o comando**. Se você configurar o rclone
 logado como seu usuário normal mas o backup rodar como root, o script não vai achar o remote.
 
-Duas opções, escolha uma:
+Quando o script roda via `sudo` (pelo `painel`, ou `sudo ~/scripts/backup_multiperfil.sh ...`),
+o envio é feito **como o usuário real**, não como root: o rclone usa o `rclone.conf` desse usuário
+e grava no destino com o dono certo. Nesse caso, configure o rclone **como seu usuário normal**
+(`rclone config`, sem `sudo`).
 
-- **Configurar direto como root** (mais simples): `sudo rclone config` — grava em
-  `/root/.config/rclone/rclone.conf`, que é onde o script vai procurar quando rodar via `sudo`.
-- **Configurar como seu usuário e apontar explicitamente**: defina `RCLONE_CONFIG` no crontab
-  apontando pro seu `rclone.conf` (ex.: `RCLONE_CONFIG=/home/seu_usuario/.config/rclone/rclone.conf`).
+Só quando o backup roda direto como root, sem `sudo` (ex.: crontab do root, `sudo crontab -e`),
+o rclone usa o do root. Aí escolha uma:
 
-Este guia assume a primeira opção (`sudo rclone config`).
+- **Configurar direto como root**: `sudo rclone config` — grava em
+  `/root/.config/rclone/rclone.conf`.
+- **Apontar pro rclone.conf de um usuário**: defina `RCLONE_CONFIG` no crontab do root
+  (ex.: `RCLONE_CONFIG=/home/seu_usuario/.config/rclone/rclone.conf`).
+
+Os exemplos abaixo usam `rclone` sem `sudo`; no caso do crontab do root, acrescente `sudo`.
 
 ## 3. Criar o remote do Google Drive
 
@@ -120,6 +126,23 @@ sudo rclone purge gdrive:teste   # limpa o teste
 Se `rclone lsd gdrive:` listar (mesmo vazio, sem erro), a autenticação está funcionando.
 
 ## 6. Usar com o backup_multiperfil.sh
+
+O jeito mais simples é gravar o destino em `~/scripts/backup.conf` (criado pelo `install.sh`
+na primeira instalação) — vale para toda execução, inclusive pelo `painel`:
+
+```
+RCLONE_REMOTO="gdrive:cliente-x"
+```
+
+Mais de um destino, separados por vírgula. Uma pasta local também vale como destino, por exemplo
+um segundo HD; se ela não existir na hora (disco desmontado), o envio pra ela é pulado com aviso,
+em vez de gravar no disco do sistema:
+
+```
+RCLONE_REMOTO="gdrive:cliente-x,/media/usuario/HD-BACKUP/backups"
+```
+
+Ou, pontualmente, pelo ambiente (tem prioridade sobre o arquivo):
 
 ```bash
 sudo -E RCLONE_REMOTO="gdrive:cliente-x" /home/<usuario>/scripts/backup_multiperfil.sh homelab
