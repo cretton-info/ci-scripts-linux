@@ -63,6 +63,31 @@ detect_real_user() {
     fi
 }
 
+# Lê variáveis de um arquivo KEY=VALOR sem executá-lo (nunca faz source: o arquivo
+# pode ser do usuário comum e o script rodar como root). Só aceita os nomes passados
+# como argumento, tira aspas simples ou duplas em volta do valor e não sobrescreve
+# variável que já veio definida pelo ambiente (o ambiente tem prioridade).
+# Uso: load_conf "/caminho/arquivo.conf" VAR1 VAR2 ...
+load_conf() {
+    local arquivo="$1"; shift
+    [ -f "$arquivo" ] || return 0
+    local linha chave valor permitido nome
+    while IFS= read -r linha || [ -n "$linha" ]; do
+        linha="${linha#"${linha%%[![:space:]]*}"}"
+        case "$linha" in ''|'#'*) continue ;; esac
+        [[ "$linha" =~ ^([A-Z_][A-Z0-9_]*)=(.*)$ ]] || continue
+        chave="${BASH_REMATCH[1]}"; valor="${BASH_REMATCH[2]}"
+        permitido=0
+        for nome in "$@"; do [ "$nome" = "$chave" ] && permitido=1 && break; done
+        [ "$permitido" -eq 1 ] || continue
+        [ -n "${!chave+x}" ] && continue
+        if [[ "$valor" =~ ^\"(.*)\"$ ]] || [[ "$valor" =~ ^\'(.*)\'$ ]]; then
+            valor="${BASH_REMATCH[1]}"
+        fi
+        printf -v "$chave" '%s' "$valor"
+    done < "$arquivo"
+}
+
 # Pergunta de confirmação s/N. Retorna 0 para sim, 1 para não.
 confirm() {
     local prompt="${1:-Confirma?}" resposta

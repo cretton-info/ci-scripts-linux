@@ -225,3 +225,42 @@ EOF
     CHAMADAS=$(wc -l < "$CONTADOR")
     [ "$CHAMADAS" -eq 2 ]
 }
+
+# --- load_conf --------------------------------------------------------
+
+@test "load_conf: lê só as variáveis permitidas e tira aspas" {
+    cat > "${TEST_TMP}/x.conf" <<'CONF'
+# comentário
+  RCLONE_REMOTO="gdrive:pasta,/media/hd/backups"
+EXCLUDE_PATTERNS='# Courses - *'
+RETENCAO_DIAS=10
+PATH=/tmp/malicioso
+CONF
+    run bash -c "unset RCLONE_REMOTO EXCLUDE_PATTERNS RETENCAO_DIAS; CI_LOG_DIR='${TEST_TMP}/logs' source '${REPO_ROOT}/lib/common.sh'
+        load_conf '${TEST_TMP}/x.conf' RCLONE_REMOTO EXCLUDE_PATTERNS RETENCAO_DIAS
+        printf '%s|%s|%s|%s' \"\$RCLONE_REMOTO\" \"\$EXCLUDE_PATTERNS\" \"\$RETENCAO_DIAS\" \"\$PATH\""
+    [ "$status" -eq 0 ]
+    [ "${output%|*}" = 'gdrive:pasta,/media/hd/backups|# Courses - *|10' ]
+    [ "${output##*|}" != '/tmp/malicioso' ]
+}
+
+@test "load_conf: variável do ambiente tem prioridade sobre o arquivo" {
+    echo 'RETENCAO_DIAS=10' > "${TEST_TMP}/x.conf"
+    run bash -c "RETENCAO_DIAS=3; CI_LOG_DIR='${TEST_TMP}/logs' source '${REPO_ROOT}/lib/common.sh'
+        load_conf '${TEST_TMP}/x.conf' RETENCAO_DIAS; echo \"\$RETENCAO_DIAS\""
+    [ "$output" = '3' ]
+}
+
+@test "load_conf: não executa o conteúdo do arquivo" {
+    printf 'RCLONE_FLAGS=$(touch %s/executou)\n' "${TEST_TMP}" > "${TEST_TMP}/x.conf"
+    run bash -c "unset RCLONE_FLAGS; CI_LOG_DIR='${TEST_TMP}/logs' source '${REPO_ROOT}/lib/common.sh'
+        load_conf '${TEST_TMP}/x.conf' RCLONE_FLAGS; echo \"\$RCLONE_FLAGS\""
+    [ ! -e "${TEST_TMP}/executou" ]
+    [ "$output" = "\$(touch ${TEST_TMP}/executou)" ]
+}
+
+@test "load_conf: arquivo inexistente não é erro" {
+    run bash -c "CI_LOG_DIR='${TEST_TMP}/logs' source '${REPO_ROOT}/lib/common.sh'; load_conf '${TEST_TMP}/nao-existe.conf' X; echo ok"
+    [ "$status" -eq 0 ]
+    [ "$output" = 'ok' ]
+}

@@ -9,6 +9,23 @@ Pra saber a versão instalada numa máquina: `painel` mostra no cabeçalho, ou c
 
 ## [Não lançado]
 
+### Adicionado
+
+- `backup_multiperfil.sh` lê a configuração de `~/scripts/backup.conf` (`RETENCAO_DIAS`,
+  `EXCLUDE_PATTERNS`, `RCLONE_REMOTO`, `RCLONE_FLAGS`, `WEBHOOK_URL`), criado pelo `install.sh` na
+  primeira instalação. Antes, o envio remoto só funcionava com `sudo -E` e a variável no ambiente,
+  então pelo `painel` (que chama `sudo` sem `-E`) nunca era enviado nada. O arquivo é lido sem
+  `source` (só os nomes permitidos), pela nova função `load_conf` de `lib/common.sh`.
+- `RCLONE_REMOTO` aceita pasta local como destino (ex.: segundo HD); se ela não existir (disco
+  desmontado), o envio é pulado com aviso em vez de gravar no disco do sistema.
+
+### Alterado
+
+- Via `sudo`, o envio do `backup_multiperfil.sh` roda o rclone como o usuário real: usa o
+  `rclone.conf` dele e não grava como root no destino nem no `rclone.conf` (que o rclone reescreve
+  ao renovar o token). Quem configurou o remote com `sudo rclone config` e roda o backup via `sudo`
+  precisa configurar o remote também no usuário normal.
+
 ### Corrigido
 
 - `backup_multiperfil.sh` agora exige root de verdade (`require_root`) antes de rodar — todos os

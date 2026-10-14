@@ -26,6 +26,13 @@ sudo ~/scripts/backup_multiperfil.sh homelab --dry-run
 sudo ~/scripts/restaurar_backup.sh
 ```
 
+## Configuração
+
+Destinos de envio (Google Drive via rclone, segundo HD), exclusões e retenção ficam em
+`~/scripts/backup.conf`, criado na primeira instalação a partir de [`backup.conf`](backup.conf).
+Detalhes em [docs/SCRIPTS.md](../docs/SCRIPTS.md#backupbackup_multiperfilsh) e
+[docs/BACKUP_REMOTO.md](../docs/BACKUP_REMOTO.md).
+
 ## Exemplo de crontab
 
 ```
