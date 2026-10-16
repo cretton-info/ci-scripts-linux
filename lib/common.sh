@@ -100,6 +100,20 @@ has_cmd() {
     command -v "$1" &>/dev/null
 }
 
+# Roda rclone como o usuário real por trás do sudo, não como root — usa o
+# rclone.conf de quem configurou os remotes (não o de root) e os arquivos
+# enviados/baixados ficam com o dono certo, sem precisar de chown depois.
+# Requer detect_real_user já chamado antes (usa REAL_USER). Rodando sem sudo,
+# ou como o próprio root, chama o rclone normalmente.
+# Uso: rclone_usuario copy origem destino
+rclone_usuario() {
+    if [ "$EUID" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "${REAL_USER:-root}" != "root" ]; then
+        sudo -u "$REAL_USER" -H rclone "$@"
+    else
+        rclone "$@"
+    fi
+}
+
 # Escapa uma string para entrar com segurança dentro de um valor JSON
 # (aspas, barra invertida, quebra de linha e tabulação). Uso:
 # printf '{"campo":"%s"}' "$(json_escape "$valor")"

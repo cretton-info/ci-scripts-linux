@@ -3,7 +3,7 @@
 | Script | Descrição |
 |---|---|
 | `backup_multiperfil.sh` | Backup rotativo em `tar.gz` por perfil (`docs`, `homelab`, `scripts`, `tudo`), com retenção configurável (`RETENCAO_DIAS`, padrão 7 dias). |
-| `restaurar_backup.sh` | Restauração interativa de um backup, nos locais originais ou em diretório temporário para auditoria. Antes de sobrescrever o sistema, cria automaticamente um backup preventivo do estado atual em `~/backups_sistema/_seguranca_pre_restauracao/`, com retenção própria (`RETENCAO_PREVENTIVOS_DIAS`, padrão 30 dias). |
+| `restaurar_backup.sh` | Restauração interativa de um backup, nos locais originais ou em diretório temporário para auditoria. Pode baixar do remoto (`RCLONE_REMOTO`) antes, se o backup local não existir mais. Antes de sobrescrever o sistema, cria automaticamente um backup preventivo do estado atual em `~/backups_sistema/_seguranca_pre_restauracao/`, com retenção própria (`RETENCAO_PREVENTIVOS_DIAS`, padrão 30 dias). |
 | `simulado_restauracao.sh` | Testa que os backups realmente restauram — extrai o mais recente de cada perfil num diretório temporário, confere integridade e um arquivo-chave, e apaga tudo em seguida. Não interativo, sem privilégio especial, seguro pra cron. |
 
 > **Atenção:** os argumentos `docs` e `tudo` gravam, respectivamente, nas pastas `documentos/` e
@@ -131,3 +131,11 @@ o script — se não estiver instalado, o script apenas avisa e segue com o back
 **Passo a passo completo pra configurar o Google Drive** (criação do remote, autenticação sem
 navegador no servidor, restringir a uma pasta, criptografia opcional):
 [docs/BACKUP_REMOTO.md](../docs/BACKUP_REMOTO.md).
+
+### Restaurar a partir do remoto (disco local perdido)
+
+Se o disco do servidor morreu e só resta o backup na nuvem/HD externo, o `restaurar_backup.sh`
+baixa de volta antes de restaurar — não precisa rodar `rclone copy` manualmente. Com
+`RCLONE_REMOTO` configurado em `backup.conf`, o script pergunta se quer restaurar dos backups
+locais ou baixar do remoto primeiro; escolhendo o remoto, lista perfis e arquivos disponíveis lá e
+baixa o escolhido antes de seguir o fluxo normal (verificação de integridade, escolha do destino).

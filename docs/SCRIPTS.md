@@ -182,8 +182,20 @@ em dois modos:
 sudo ~/scripts/restaurar_backup.sh
 ```
 
-Fluxo: escolhe o perfil → escolhe o arquivo `.tar.gz` (lista ordenada do mais recente) → **verificação
+Fluxo: (se houver `RCLONE_REMOTO` configurado) escolhe baixar do remoto ou usar backup local →
+escolhe o perfil → escolhe o arquivo `.tar.gz` (lista ordenada do mais recente) → **verificação
 de integridade** → escolhe o modo de destino.
+
+**Baixar do remoto antes de restaurar:** se `RCLONE_REMOTO` estiver configurado em `backup.conf`
+(mesmo arquivo do `backup_multiperfil.sh` — ver seção anterior) e o `rclone` estiver instalado, o
+script pergunta se quer restaurar a partir dos backups locais ou baixar do remoto primeiro. Nesse
+segundo caso: lista os perfis (pastas) disponíveis no remote, lista os `.tar.gz` desse perfil (mais
+recente primeiro), baixa o escolhido junto com o `.sha256` (se existir) para
+`~/backups_sistema/<perfil>/`, e segue o fluxo normal de restauração a partir daí. Se o arquivo já
+tiver sido baixado antes (mesmo nome), não baixa de novo. Existindo mais de um destino em
+`RCLONE_REMOTO` (redundância 3-2-1), pergunta de qual deles baixar. É a forma de recuperar um backup
+quando o disco local original foi perdido e só resta a cópia na nuvem/HD externo — sem essa opção, o
+backup remoto não servia pra nada numa recuperação de desastre de verdade.
 
 **Verificação de integridade (antes de qualquer restauração, nos dois modos):** confere o checksum
 `.sha256` salvo junto do backup, se existir. Se não bater, aborta sem tocar em nada. Se o backup for

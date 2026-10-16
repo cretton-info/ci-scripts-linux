@@ -242,16 +242,10 @@ if [ -n "${RCLONE_REMOTO:-}" ]; then
     if ! has_cmd rclone; then
         log_warn "RCLONE_REMOTO definido mas rclone não encontrado — envio remoto pulado."
     else
-        # Via sudo, o rclone roda como o usuário real: usa o rclone.conf dele (onde
-        # os remotes foram configurados) e não grava como root nem no destino nem
-        # no rclone.conf (o rclone reescreve o arquivo ao renovar o token OAuth).
-        rclone_usuario() {
-            if [ "$EUID" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$REAL_USER" != "root" ]; then
-                sudo -u "$REAL_USER" -H rclone "$@"
-            else
-                rclone "$@"
-            fi
-        }
+        # rclone_usuario (lib/common.sh): via sudo, roda como o usuário real — usa
+        # o rclone.conf dele (onde os remotes foram configurados) e não grava como
+        # root nem no destino nem no rclone.conf (o rclone reescreve o arquivo ao
+        # renovar o token OAuth).
         IFS=',' read -r -a RCLONE_DESTINOS <<< "$RCLONE_REMOTO"
         for remoto in "${RCLONE_DESTINOS[@]}"; do
             [ -n "$remoto" ] || continue

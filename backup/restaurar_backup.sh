@@ -15,57 +15,161 @@ detect_real_user
 DESTINO_BASE="${USER_HOME}/backups_sistema"
 RETENCAO_PREVENTIVOS_DIAS="${RETENCAO_PREVENTIVOS_DIAS:-30}"
 
+# Mesmo backup.conf do backup_multiperfil.sh, só pra saber onde baixar de volta
+# (RCLONE_REMOTO) — não grava nem altera nada lá. Não pré-declara as variáveis:
+# load_conf só lê do arquivo quando elas ainda não existem (senão o ambiente teria
+# prioridade sobre ele, que é a regra) — usar "${RCLONE_REMOTO:-}" como no
+# backup_multiperfil.sh evita erro do "set -u" se nenhuma das duas definir nada.
+BACKUP_CONF="${BACKUP_CONF:-${SCRIPT_DIR}/backup.conf}"
+load_conf "$BACKUP_CONF" RCLONE_REMOTO RCLONE_FLAGS
+
 echo "=========================================================="
 echo " 🔄 ASSISTENTE DE RESTAURAÇÃO DE BACKUP "
 echo "=========================================================="
 
-[ -d "$DESTINO_BASE" ] || die "Diretório de backups não encontrado em: $DESTINO_BASE"
+# 0. Origem: backups já locais, ou baixar do remoto configurado primeiro. Só
+# oferece a segunda opção se houver RCLONE_REMOTO configurado e rclone instalado
+# — senão nem pergunta, pra não confundir quem nunca configurou backup remoto.
+ORIGEM="local"
+if [ -n "${RCLONE_REMOTO:-}" ] && has_cmd rclone; then
+    echo "De onde restaurar?"
+    echo "1) Backups locais (${DESTINO_BASE})"
+    echo "2) Baixar do remoto configurado antes de restaurar"
+    echo "----------------------------------------------------------"
+    read -r -p "Escolha [1-2, padrão 1]: " ORIGEM_IDX
+    [ "$ORIGEM_IDX" = "2" ] && ORIGEM="remoto"
+fi
 
-# 1. Seleção do Perfil
-echo "Selecione o perfil de backup para restaurar:"
-PERFIS=()
-while IFS= read -r -d '' d; do
-    PERFIS+=("$(basename "$d")")
-done < <(find "$DESTINO_BASE" -mindepth 1 -maxdepth 1 -type d -print0)
+if [ "$ORIGEM" = "remoto" ]; then
+    # RCLONE_REMOTO pode ter mais de um destino (redundância 3-2-1) — pede qual
+    # usar quando houver mais de um, só segue direto se houver um único.
+    IFS=',' read -r -a RCLONE_DESTINOS <<< "${RCLONE_REMOTO:-}"
+    if [ "${#RCLONE_DESTINOS[@]}" -gt 1 ]; then
+        echo ""
+        echo "Mais de um destino configurado em RCLONE_REMOTO:"
+        for i in "${!RCLONE_DESTINOS[@]}"; do
+            echo "  $((i+1))) ${RCLONE_DESTINOS[$i]}"
+        done
+        echo "----------------------------------------------------------"
+        read -r -p "Escolha o destino [1-${#RCLONE_DESTINOS[@]}]: " DEST_IDX
+        REMOTO_ESCOLHIDO="${RCLONE_DESTINOS[$((DEST_IDX-1))]:-}"
+    else
+        REMOTO_ESCOLHIDO="${RCLONE_DESTINOS[0]:-}"
+    fi
+    [ -n "$REMOTO_ESCOLHIDO" ] || die "Destino remoto inválido."
+    REMOTO_ESCOLHIDO="${REMOTO_ESCOLHIDO%/}"
 
-[ "${#PERFIS[@]}" -gt 0 ] || die "Nenhum perfil de backup encontrado dentro de $DESTINO_BASE."
+    echo ""
+    echo "📂 Buscando perfis disponíveis em ${REMOTO_ESCOLHIDO}..."
+    mapfile -t PERFIS < <(rclone_usuario lsf "${REMOTO_ESCOLHIDO}/" --dirs-only 2>/dev/null | sed 's#/$##')
+    [ "${#PERFIS[@]}" -gt 0 ] || die "Nenhum perfil encontrado em ${REMOTO_ESCOLHIDO} (confira o remote e a conexão com 'rclone lsd ${REMOTO_ESCOLHIDO%%:*}:')."
 
-for i in "${!PERFIS[@]}"; do
-    echo "  $((i+1))) ${PERFIS[$i]}"
-done
-echo "----------------------------------------------------------"
-read -r -p "Escolha o perfil [1-${#PERFIS[@]}]: " PERFIL_IDX
+    for i in "${!PERFIS[@]}"; do
+        echo "  $((i+1))) ${PERFIS[$i]}"
+    done
+    echo "----------------------------------------------------------"
+    read -r -p "Escolha o perfil [1-${#PERFIS[@]}]: " PERFIL_IDX
 
-PERFIL_SELECIONADO="${PERFIS[$((PERFIL_IDX-1))]:-}"
-[ -n "$PERFIL_SELECIONADO" ] || die "Opção de perfil inválida!"
+    PERFIL_SELECIONADO="${PERFIS[$((PERFIL_IDX-1))]:-}"
+    [ -n "$PERFIL_SELECIONADO" ] || die "Opção de perfil inválida!"
 
-DIR_PERFIL="${DESTINO_BASE}/${PERFIL_SELECIONADO}"
+    echo ""
+    echo "📂 Buscando backups de [ ${PERFIL_SELECIONADO^^} ] em ${REMOTO_ESCOLHIDO}/${PERFIL_SELECIONADO}/..."
+    mapfile -t LINHAS_REMOTO < <(rclone_usuario lsf "${REMOTO_ESCOLHIDO}/${PERFIL_SELECIONADO}/" --files-only \
+        --include "backup_${PERFIL_SELECIONADO}_*.tar.gz" --format "pst" --separator ";" 2>/dev/null | sort -t';' -r)
+    [ "${#LINHAS_REMOTO[@]}" -gt 0 ] || die "Nenhum backup .tar.gz encontrado em ${REMOTO_ESCOLHIDO}/${PERFIL_SELECIONADO}/."
 
-# 2. Seleção do Arquivo .tar.gz (mais recente primeiro)
-echo ""
-echo "📂 Buscando arquivos de backup no perfil [ ${PERFIL_SELECIONADO^^} ]..."
-ARQUIVOS=()
-while IFS= read -r -d '' f; do
-    ARQUIVOS+=("$f")
-done < <(find "$DIR_PERFIL" -maxdepth 1 -name "backup_${PERFIL_SELECIONADO}_*.tar.gz" -type f -printf '%T@ %p\0' \
-            | sort -z -rn | sed -z 's/^[^ ]* //')
+    NOMES_REMOTO=(); TAMANHOS_REMOTO=(); DATAS_REMOTO=()
+    for linha in "${LINHAS_REMOTO[@]}"; do
+        NOMES_REMOTO+=("${linha%%;*}")
+        resto="${linha#*;}"
+        TAMANHOS_REMOTO+=("${resto%%;*}")
+        DATAS_REMOTO+=("${resto#*;}")
+    done
 
-[ "${#ARQUIVOS[@]}" -gt 0 ] || die "Nenhum arquivo de backup .tar.gz encontrado em $DIR_PERFIL."
+    echo ""
+    echo "Backups disponíveis no remoto (mais recente primeiro):"
+    for i in "${!NOMES_REMOTO[@]}"; do
+        TAM_H=$(numfmt --to=iec "${TAMANHOS_REMOTO[$i]}" 2>/dev/null || echo "${TAMANHOS_REMOTO[$i]}B")
+        echo "  $((i+1))) ${NOMES_REMOTO[$i]} ($TAM_H) - ${DATAS_REMOTO[$i]}"
+    done
+    echo "----------------------------------------------------------"
+    read -r -p "Escolha qual baixar [1-${#NOMES_REMOTO[@]}]: " ARQ_IDX
 
-echo ""
-echo "Backups disponíveis (do mais recente ao mais antigo):"
-for i in "${!ARQUIVOS[@]}"; do
-    ARQ_NAME=$(basename "${ARQUIVOS[$i]}")
-    ARQ_SIZE=$(du -sh "${ARQUIVOS[$i]}" | awk '{print $1}')
-    ARQ_DATE=$(stat -c %y "${ARQUIVOS[$i]}" | cut -d'.' -f1)
-    echo "  $((i+1))) $ARQ_NAME ($ARQ_SIZE) - $ARQ_DATE"
-done
-echo "----------------------------------------------------------"
-read -r -p "Escolha qual arquivo restaurar [1-${#ARQUIVOS[@]}]: " ARQ_IDX
+    ARQ_REMOTO_NOME="${NOMES_REMOTO[$((ARQ_IDX-1))]:-}"
+    [ -n "$ARQ_REMOTO_NOME" ] || die "Opção de arquivo inválida!"
 
-ARQUIVO_SELECIONADO="${ARQUIVOS[$((ARQ_IDX-1))]:-}"
-if [ -z "$ARQUIVO_SELECIONADO" ] || [ ! -f "$ARQUIVO_SELECIONADO" ]; then
-    die "Opção de arquivo inválida!"
+    DIR_PERFIL="${DESTINO_BASE}/${PERFIL_SELECIONADO}"
+    mkdir -p "$DIR_PERFIL"
+    ARQUIVO_SELECIONADO="${DIR_PERFIL}/${ARQ_REMOTO_NOME}"
+
+    if [ -f "$ARQUIVO_SELECIONADO" ]; then
+        log_info "Já existe localmente em ${ARQUIVO_SELECIONADO} — usando o que já está baixado, sem baixar de novo."
+    else
+        echo ""
+        log_info "Baixando ${ARQ_REMOTO_NOME} de ${REMOTO_ESCOLHIDO}/${PERFIL_SELECIONADO}/..."
+        # shellcheck disable=SC2086
+        if ! rclone_usuario copy "${REMOTO_ESCOLHIDO}/${PERFIL_SELECIONADO}/${ARQ_REMOTO_NOME}" "${DIR_PERFIL}/" ${RCLONE_FLAGS:-}; then
+            alert_webhook "restauracao_download_falhou" "Perfil '${PERFIL_SELECIONADO}': falha ao baixar ${ARQ_REMOTO_NOME} de ${REMOTO_ESCOLHIDO}."
+            die "Falha ao baixar o backup do remoto. Nada foi alterado localmente."
+        fi
+        # Checksum é melhor esforço: backups antigos podem não ter .sha256 no remoto
+        # também — se não existir, a verificação de integridade abaixo cai pro
+        # fallback de leitura do tar, igual já faz com backups locais sem checksum.
+        # shellcheck disable=SC2086
+        rclone_usuario copy "${REMOTO_ESCOLHIDO}/${PERFIL_SELECIONADO}/${ARQ_REMOTO_NOME}.sha256" "${DIR_PERFIL}/" ${RCLONE_FLAGS:-} 2>/dev/null || true
+        chown "${REAL_USER}:${REAL_USER}" "$ARQUIVO_SELECIONADO" "${ARQUIVO_SELECIONADO}.sha256" 2>/dev/null || true
+        log_ok "Download concluído: $ARQUIVO_SELECIONADO"
+    fi
+else
+    [ -d "$DESTINO_BASE" ] || die "Diretório de backups não encontrado em: $DESTINO_BASE"
+
+    # 1. Seleção do Perfil
+    echo "Selecione o perfil de backup para restaurar:"
+    PERFIS=()
+    while IFS= read -r -d '' d; do
+        PERFIS+=("$(basename "$d")")
+    done < <(find "$DESTINO_BASE" -mindepth 1 -maxdepth 1 -type d -print0)
+
+    [ "${#PERFIS[@]}" -gt 0 ] || die "Nenhum perfil de backup encontrado dentro de $DESTINO_BASE."
+
+    for i in "${!PERFIS[@]}"; do
+        echo "  $((i+1))) ${PERFIS[$i]}"
+    done
+    echo "----------------------------------------------------------"
+    read -r -p "Escolha o perfil [1-${#PERFIS[@]}]: " PERFIL_IDX
+
+    PERFIL_SELECIONADO="${PERFIS[$((PERFIL_IDX-1))]:-}"
+    [ -n "$PERFIL_SELECIONADO" ] || die "Opção de perfil inválida!"
+
+    DIR_PERFIL="${DESTINO_BASE}/${PERFIL_SELECIONADO}"
+
+    # 2. Seleção do Arquivo .tar.gz (mais recente primeiro)
+    echo ""
+    echo "📂 Buscando arquivos de backup no perfil [ ${PERFIL_SELECIONADO^^} ]..."
+    ARQUIVOS=()
+    while IFS= read -r -d '' f; do
+        ARQUIVOS+=("$f")
+    done < <(find "$DIR_PERFIL" -maxdepth 1 -name "backup_${PERFIL_SELECIONADO}_*.tar.gz" -type f -printf '%T@ %p\0' \
+                | sort -z -rn | sed -z 's/^[^ ]* //')
+
+    [ "${#ARQUIVOS[@]}" -gt 0 ] || die "Nenhum arquivo de backup .tar.gz encontrado em $DIR_PERFIL."
+
+    echo ""
+    echo "Backups disponíveis (do mais recente ao mais antigo):"
+    for i in "${!ARQUIVOS[@]}"; do
+        ARQ_NAME=$(basename "${ARQUIVOS[$i]}")
+        ARQ_SIZE=$(du -sh "${ARQUIVOS[$i]}" | awk '{print $1}')
+        ARQ_DATE=$(stat -c %y "${ARQUIVOS[$i]}" | cut -d'.' -f1)
+        echo "  $((i+1))) $ARQ_NAME ($ARQ_SIZE) - $ARQ_DATE"
+    done
+    echo "----------------------------------------------------------"
+    read -r -p "Escolha qual arquivo restaurar [1-${#ARQUIVOS[@]}]: " ARQ_IDX
+
+    ARQUIVO_SELECIONADO="${ARQUIVOS[$((ARQ_IDX-1))]:-}"
+    if [ -z "$ARQUIVO_SELECIONADO" ] || [ ! -f "$ARQUIVO_SELECIONADO" ]; then
+        die "Opção de arquivo inválida!"
+    fi
 fi
 
 # 2.1 Verificação de integridade antes de mexer em qualquer coisa: usa o
