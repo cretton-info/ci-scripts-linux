@@ -15,7 +15,7 @@ detect_real_user
 # sobrescrita numa reinstalação). Variáveis já definidas no ambiente têm prioridade.
 # Lida sem "source": o arquivo é do usuário comum e este script roda como root.
 BACKUP_CONF="${BACKUP_CONF:-${SCRIPT_DIR}/backup.conf}"
-load_conf "$BACKUP_CONF" RETENCAO_DIAS EXCLUDE_PATTERNS RCLONE_REMOTO RCLONE_FLAGS WEBHOOK_URL
+load_conf "$BACKUP_CONF" RETENCAO_DIAS EXCLUDE_PATTERNS RCLONE_REMOTO RCLONE_FLAGS WEBHOOK_URL ALERTA_COOLDOWN_HORAS
 
 DESTINO_BASE="${USER_HOME}/backups_sistema"
 RETENCAO_DIAS="${RETENCAO_DIAS:-7}"

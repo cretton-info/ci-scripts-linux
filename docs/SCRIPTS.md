@@ -98,6 +98,8 @@ deixar rodando de verdade.
 por linha), que o `install.sh` cria a partir de `backup/backup.conf` na primeira instalação e não
 sobrescreve depois. O arquivo é lido sem ser executado (só as variáveis desta lista são aceitas), e
 uma variável definida no ambiente tem prioridade sobre ele. `BACKUP_CONF` aponta para outro arquivo.
+Vale só para este script — `restaurar_backup.sh` (`RETENCAO_PREVENTIVOS_DIAS`) e
+`simulado_restauracao.sh` não leem `backup.conf`, só variável de ambiente.
 
 **Variáveis de ambiente:**
 
@@ -122,7 +124,13 @@ uma variável definida no ambiente tem prioridade sobre ele. `BACKUP_CONF` apont
   com privilégio.
 - `RCLONE_FLAGS` — flags extras passadas ao `rclone copy` (ex.: `"--transfers 4"`).
 - `WEBHOOK_URL` — se definida, alerta via [`alert_webhook`](#libcommonsh) quando não há nenhuma
-  origem válida para o perfil, o `tar` falha, ou o backup sai corrompido logo após a criação.
+  origem válida para o perfil, o `tar` falha, o backup sai corrompido logo após a criação, ou falha
+  o envio para algum destino de `RCLONE_REMOTO`. Variável compartilhada com outros scripts
+  (`health_check.sh`, `restaurar_backup.sh`) — cada um lê do próprio ambiente/`.conf`, mudar aqui
+  não afeta os outros.
+- `ALERTA_COOLDOWN_HORAS` — intervalo mínimo em horas entre alertas repetidos do mesmo motivo via
+  webhook (padrão: `6`, definido em [`alert_webhook`](#libcommonsh)). Só tem efeito com
+  `WEBHOOK_URL` definida.
 
   Passo a passo completo de configuração (Google Drive): [docs/BACKUP_REMOTO.md](BACKUP_REMOTO.md).
 
