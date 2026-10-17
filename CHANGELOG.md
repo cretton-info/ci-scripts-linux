@@ -11,6 +11,15 @@ Pra saber a versão instalada numa máquina: `painel` mostra no cabeçalho, ou c
 
 ### Adicionado
 
+- `maintenance/atualizar_sistema.sh` — só `apt-get update` + `apt-get full-upgrade`, sem o resto da
+  limpeza do `manutencao_avancada.sh` (Docker, Flatpak, Snap etc.), pra deixar agendado sem
+  supervisão com menos risco. Assistente embutido (`--agendar`/`--desagendar`) cria/remove a entrada
+  no crontab do root, sem precisar editar `crontab -e` manualmente; rodar `--agendar` de novo
+  substitui o agendamento anterior em vez de duplicar. Também disponível no `painel` (opção 10).
+- `rclone_usuario` (roda o rclone como o usuário real sob `sudo`) movida de `backup_multiperfil.sh`
+  pra `lib/common.sh`, compartilhada com o novo fluxo de download do `restaurar_backup.sh`.
+- `restaurar_backup.sh` pode baixar do remoto (`RCLONE_REMOTO`) antes de restaurar, se o backup
+  local não existir mais — fecha o ciclo do backup remoto pra recuperação de desastre de verdade.
 - `backup_multiperfil.sh` lê a configuração de `~/scripts/backup.conf` (`RETENCAO_DIAS`,
   `EXCLUDE_PATTERNS`, `RCLONE_REMOTO`, `RCLONE_FLAGS`, `WEBHOOK_URL`), criado pelo `install.sh` na
   primeira instalação. Antes, o envio remoto só funcionava com `sudo -E` e a variável no ambiente,

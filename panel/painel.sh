@@ -20,6 +20,8 @@ pausa() {
 
 executar() {
     local script="$1" precisa_sudo="${2:-nao}"
+    local extra=()
+    [ "$#" -ge 3 ] && extra=("${@:3}")
     clear
     local caminho="${SCRIPTS_DIR}/${script}"
     if [ ! -f "$caminho" ]; then
@@ -29,9 +31,9 @@ executar() {
         return
     fi
     if [ "$precisa_sudo" = "sudo" ]; then
-        sudo bash "$caminho"
+        sudo bash "$caminho" "${extra[@]}"
     else
-        bash "$caminho"
+        bash "$caminho" "${extra[@]}"
     fi
     pausa
 }
@@ -52,10 +54,11 @@ while true; do
     echo " 7) 🧪 Simulado de Restauração (testa os backups sem alterar nada)"
     echo " 8) 🚀 Provisionar Máquina (Setup Pós-Instalação)"
     echo " 9) 🚦 Status da Frota (vários hosts via SSH)"
+    echo " 10) ⏰ Agendar Atualização Automática (apt update + full-upgrade)"
     echo "----------------------------------------------------------"
     echo " 0) ❌ Sair"
     echo "=========================================================="
-    read -r -p "Escolha uma opção [0-9]: " OPCAO
+    read -r -p "Escolha uma opção [0-10]: " OPCAO
 
     case "$OPCAO" in
         1) executar "health_check.sh" ;;
@@ -67,6 +70,7 @@ while true; do
         7) executar "simulado_restauracao.sh" ;;
         8) executar "setup_pos_instalacao.sh" sudo ;;
         9) executar "status_frota.sh" ;;
+        10) executar "atualizar_sistema.sh" sudo --agendar ;;
         0)
             echo -e "\nSaindo... Até logo!"
             exit 0

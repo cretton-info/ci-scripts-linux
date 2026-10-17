@@ -544,6 +544,55 @@ confirmação da etapa 7 (Docker).
 
 ---
 
+## maintenance/atualizar_sistema.sh
+
+**O que faz:** só `apt-get update` + `apt-get full-upgrade`, nada mais — nenhuma limpeza, nenhum
+`autoremove`, não toca em Docker/Flatpak/Snap. Mais leve e previsível que o `manutencao_avancada.sh`
+pra deixar agendado sem supervisão num servidor de cliente, onde uma limpeza mais agressiva (ex.:
+`docker system prune`) poderia incomodar. Tem um assistente embutido pra agendar no crontab do root
+sem precisar editar `crontab -e` manualmente.
+
+**Requisitos:** **sempre roda com `sudo`**.
+
+**Uso:**
+
+```bash
+sudo ~/scripts/atualizar_sistema.sh              # roda agora
+sudo ~/scripts/atualizar_sistema.sh --dry-run    # só mostra o que seria atualizado (apt-get -s)
+sudo ~/scripts/atualizar_sistema.sh --agendar    # assistente: agenda no crontab do root
+sudo ~/scripts/atualizar_sistema.sh --desagendar # remove o agendamento criado por --agendar
+```
+
+**`--agendar`:** pergunta a frequência (diária, ou semanal com dia da semana) e o horário (`HH:MM`),
+valida as respostas, e grava uma linha no crontab do root terminada no marcador
+`# ci-scripts-linux:atualizar_sistema`. Rodar `--agendar` de novo **substitui** o agendamento
+anterior (filtra pelo marcador antes de adicionar a nova linha) em vez de duplicar — seguro chamar
+mais de uma vez, inclusive pra só trocar o horário. Também disponível no `painel` (opção 10).
+
+**`--desagendar`:** remove a linha do crontab do root que tem o marcador, se existir; avisa (não
+falha) se não houver nenhum agendamento ativo.
+
+**Atualização em si (sem `--agendar`/`--desagendar`):** `apt-get update` (continua mesmo se algum
+repositório de terceiros falhar) seguido de `apt-get full-upgrade -y` com
+`DEBIAN_FRONTEND=noninteractive` e `Dpkg::Options::="--force-confdef"`/`"--force-confold"` — mantém
+a configuração atual em vez de travar esperando resposta sobre um arquivo de config modificado,
+essencial pra não enguiçar rodando sem ninguém olhando via cron. Ao final, avisa se
+`/var/run/reboot-required` existir (igual ao `manutencao_avancada.sh`).
+
+**`--dry-run`:** `apt-get update` roda de verdade (só lê os repositórios, não altera nada); o
+`full-upgrade` usa `apt-get full-upgrade -s` (simulação nativa do apt, lista os pacotes reais que
+seriam instalados sem instalar nada).
+
+**Variáveis de ambiente:**
+
+- `WEBHOOK_URL` — se definida, alerta via [`alert_webhook`](#libcommonsh) quando `apt-get
+  full-upgrade` falha.
+
+**Exit codes:** `1` se o `apt-get full-upgrade` falhar (e nesse caso também alerta via webhook);
+`0` em qualquer outro caso, incluindo `--dry-run`, `--agendar` e `--desagendar`.
+
+---
+
 ## panel/painel.sh
 
 **O que faz:** menu interativo central (TUI simples em loop) que dá acesso a todos os outros
@@ -574,6 +623,7 @@ O cabeçalho mostra a versão instalada (lida de `~/scripts/VERSION`, gravada pe
 | 7 | `simulado_restauracao.sh` | não |
 | 8 | `setup_pos_instalacao.sh` | sim |
 | 9 | `status_frota.sh` | não |
+| 10 | `atualizar_sistema.sh --agendar` | sim |
 | 0 | sai do painel | — |
 
 \* `backup_multiperfil.sh` não exige `sudo`, mas normalmente precisa dele pra conseguir ler `/etc`.
