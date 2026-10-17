@@ -9,7 +9,7 @@ provisionamento, manutenção e um painel central de acesso.
 backup/          backup_multiperfil.sh, restaurar_backup.sh, simulado_restauracao.sh
 monitoring/      health_check.sh, network_scanner.sh, status_frota.sh, hosts.conf.example
 provisioning/    setup_pos_instalacao.sh, inventario_universal.sh, apps.conf
-maintenance/     manutencao_avancada.sh, atualizar_sistema.sh
+maintenance/     manutencao_avancada.sh, atualizar_sistema.sh, verificar_agendamentos.sh
 panel/           painel.sh (menu central)
 lib/common.sh    funções compartilhadas (log, require_root, detect_real_user, confirm)
 lib/logrotate.conf  regra de rotação dos logs, instalada automaticamente em /etc/logrotate.d

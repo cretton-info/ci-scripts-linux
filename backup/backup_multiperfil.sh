@@ -232,6 +232,12 @@ CHECKSUM_FINAL="${ARQUIVO_FINAL}.sha256"
 (cd "$DESTINO_FINAL" && sha256sum "$(basename "$ARQUIVO_FINAL")" > "$(basename "$CHECKSUM_FINAL")")
 log_ok "Integridade verificada. Checksum: $(basename "$CHECKSUM_FINAL")"
 
+# Heartbeat por perfil — não usa o mtime do .tar.gz pra isso porque o
+# restaurar_backup.sh baixar um backup antigo do remoto de volta pra esta
+# mesma pasta mexeria no mtime do arquivo sem ter rodado um backup novo de
+# verdade (verificar_agendamentos.sh detectaria "recente" por engano).
+marcar_execucao_ok "backup_${NOME_PERFIL}"
+
 chown -R "${REAL_USER}:${REAL_USER}" "$DESTINO_BASE"
 
 # 4. Envio remoto opcional via rclone (não derruba o backup local em caso de falha)

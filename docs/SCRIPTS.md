@@ -27,6 +27,8 @@ Não é executado diretamente — é a biblioteca compartilhada que todo script 
 | `has_cmd nome` | Retorna 0 se o comando `nome` existe no `PATH`. |
 | `alert_webhook "motivo" "detalhe"` | Envia um alerta em JSON para `WEBHOOK_URL` (se definida), com cooldown por motivo. Usado por qualquer script para reportar falhas — não faz nada se `WEBHOOK_URL` não estiver definida. |
 | `json_escape "valor"` | Escapa uma string pra entrar com segurança dentro de um valor JSON (aspas, barra invertida, quebra de linha, tab e outros caracteres de controle, ex.: cores ANSI). Usado pelo modo `--json` de `health_check.sh` e `inventario_universal.sh`. |
+| `rclone_usuario comando ...` | Roda `rclone` como o usuário real por trás do `sudo`, não como root — usa o `rclone.conf` de quem configurou os remotes. Requer `detect_real_user` já chamado antes. Usado por `backup_multiperfil.sh` e `restaurar_backup.sh`. |
+| `marcar_execucao_ok "nome"` | Grava um timestamp em `<pasta do log>/heartbeats/<nome>.last`, marcando que um script terminou com sucesso. Usado por `backup_multiperfil.sh` (por perfil), `atualizar_sistema.sh` e `simulado_restauracao.sh`, lido por `verificar_agendamentos.sh` pra detectar se o cron parou de chamar algum deles. |
 | `LOG_FILE` | Caminho do arquivo de log da execução atual (definido automaticamente ao sourcear). |
 
 **Log automático:** toda chamada a `log_warn`/`log_error`/`die` grava uma linha com timestamp e PID
@@ -593,6 +595,68 @@ seriam instalados sem instalar nada).
 
 ---
 
+## maintenance/verificar_agendamentos.sh
+
+**O que faz:** detecta se o cron parou de chamar `backup_multiperfil.sh` (por perfil),
+`atualizar_sistema.sh` ou `simulado_restauracao.sh`, mesmo que nenhum deles tenha "falhado" no
+sentido que `alert_webhook` entende. Esses três scripts só alertam de dentro de si mesmos — se o
+cron nunca chamar o script (crontab apagado, disco cheio, permissão quebrada depois de uma
+reinstalação), nenhum alerta sai, porque o código que alertaria nunca roda. Este script verifica
+por fora, comparando a idade do heartbeat mais recente de cada um ([`marcar_execucao_ok`]
+(#libcommonsh)) com um limite esperado.
+
+**Requisitos:** **sempre roda com `sudo`** (precisa ler o crontab do root e `/var/log/`).
+
+**Uso:**
+
+```bash
+sudo ~/scripts/verificar_agendamentos.sh
+```
+
+**O que verifica, e só se encontrar configurado** (não precisa ter os três pra usar este script):
+
+1. **Backup, por perfil** — qualquer pasta em `~/backups_sistema/<perfil>/` que já tenha pelo menos
+   um `.tar.gz`. Limite: `AGENDAMENTO_MAX_HORAS_BACKUP` (padrão `48`).
+2. **Atualização automática** — só se houver uma linha no crontab do root com o marcador do
+   `atualizar_sistema.sh --agendar`. O limite não é uma variável: é estimado a partir do próprio
+   campo "dia da semana" dessa linha de cron (`*` → diária, 36h de limite; específico → semanal,
+   218h de limite) — o agendamento real é a fonte da verdade, não uma configuração duplicada.
+3. **Simulado de restauração** — se `simulado_restauracao.sh` aparecer em qualquer crontab (do
+   root ou do usuário real — ele não exige `sudo`, então pode estar em qualquer um dos dois). Limite:
+   `AGENDAMENTO_MAX_HORAS_SIMULADO` (padrão `192` = 8 dias, pra agendamento semanal com margem).
+
+Pra cada um: heartbeat ausente (nunca rodou com sucesso apesar de configurado) ou mais velho que o
+limite → `log_error` + [`alert_webhook`](#libcommonsh) (motivos: `agendamento_backup_<perfil>`,
+`agendamento_atualizacao`, `agendamento_simulado`). Dentro do limite → `log_ok`. Nada configurado
+→ `log_info`, sem alertar (evita falso positivo em quem não usa os três).
+
+**Onde procura o heartbeat:** em `/var/log/ci-scripts-linux/heartbeats/` (convenção de script
+rodando como root, via `sudo crontab`) **e** em
+`~/.local/state/ci-scripts-linux/logs/heartbeats/` do usuário real (convenção de script sem
+exigência de `sudo` no crontab do próprio usuário) — usa o mais recente dos dois, já que
+`backup_multiperfil.sh`/`atualizar_sistema.sh` sempre exigem root mas `simulado_restauracao.sh`
+não.
+
+**Variáveis de ambiente:**
+
+- `AGENDAMENTO_MAX_HORAS_BACKUP` — padrão `48`; ajuste se o backup daquele perfil for semanal, não
+  diário.
+- `AGENDAMENTO_MAX_HORAS_SIMULADO` — padrão `192`.
+- `WEBHOOK_URL` — se definida, alerta via [`alert_webhook`](#libcommonsh) quando algo está atrasado
+  ou nunca rodou.
+
+**Bom candidato pra rodar diariamente via cron** (inclusive no crontab do root, já que exige
+`sudo`):
+
+```
+0 8 * * * WEBHOOK_URL="https://seu-n8n.exemplo.com/webhook/alerta" /home/<usuario>/scripts/verificar_agendamentos.sh > /dev/null 2>&1
+```
+
+**Exit codes:** `1` se encontrar pelo menos um agendamento atrasado/nunca executado; `0` se tudo
+estiver em dia (ou nada estiver configurado). Não altera nada no sistema — só leitura.
+
+---
+
 ## panel/painel.sh
 
 **O que faz:** menu interativo central (TUI simples em loop) que dá acesso a todos os outros
@@ -624,6 +688,7 @@ O cabeçalho mostra a versão instalada (lida de `~/scripts/VERSION`, gravada pe
 | 8 | `setup_pos_instalacao.sh` | sim |
 | 9 | `status_frota.sh` | não |
 | 10 | `atualizar_sistema.sh --agendar` | sim |
+| 11 | `verificar_agendamentos.sh` | sim |
 | 0 | sai do painel | — |
 
 \* `backup_multiperfil.sh` não exige `sudo`, mas normalmente precisa dele pra conseguir ler `/etc`.

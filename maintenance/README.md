@@ -4,6 +4,7 @@
 |---|---|
 | `manutencao_avancada.sh` | Rotina completa de manutenção (9 etapas): `apt full-upgrade`, correção de pacotes quebrados, `autoremove --purge`, limpeza do journal, Flatpak, Snap, Docker (com confirmação), lixeira/miniaturas do usuário, TRIM de SSD, e verificação de reboot pendente ao final. Requer `sudo`. |
 | `atualizar_sistema.sh` | Só `apt update` + `apt full-upgrade`, nada mais — mais leve e previsível que a manutenção completa pra deixar agendado sem supervisão. Tem assistente embutido (`--agendar`) pra criar o agendamento no crontab do root. Requer `sudo`. |
+| `verificar_agendamentos.sh` | Verifica se o backup (por perfil), a atualização automática e o simulado de restauração ainda estão sendo chamados pelo cron — alerta se algum estiver atrasado ou nunca tiver rodado com sucesso apesar de agendado. Requer `sudo`. |
 
 ## Uso
 
@@ -65,3 +66,36 @@ sudo ~/scripts/atualizar_sistema.sh --desagendar
 ```
 
 Pra conferir o que está agendado: `sudo crontab -l | grep ci-scripts-linux:atualizar_sistema`.
+
+## O cron ainda está rodando? (`verificar_agendamentos.sh`)
+
+`backup_multiperfil.sh`, `atualizar_sistema.sh` e `simulado_restauracao.sh` só alertam via
+`WEBHOOK_URL` quando **falham** — se o cron parar de chamá-los de vez (crontab apagado numa
+reinstalação, disco cheio, permissão quebrada depois de uma atualização do sistema), nada roda e
+por isso nada alerta. É o jeito mais comum de um backup "parar de funcionar" sem ninguém notar até
+precisar restaurar.
+
+`verificar_agendamentos.sh` fecha essa lacuna rodando por fora: cada um dos três scripts grava um
+heartbeat (timestamp) quando termina com sucesso, e este script compara a idade do heartbeat mais
+recente com um limite esperado — pro backup e pro simulado, um limite configurável; pra atualização
+automática, estimado a partir da própria linha de cron criada pelo `--agendar` (diária ou semanal).
+Só avalia o que encontra configurado — não precisa ter os três.
+
+```bash
+sudo ~/scripts/verificar_agendamentos.sh
+```
+
+Bom candidato pra rodar diariamente via cron, com `WEBHOOK_URL` definida:
+
+```
+0 8 * * * WEBHOOK_URL="https://seu-n8n.exemplo.com/webhook/alerta" /home/<usuario>/scripts/verificar_agendamentos.sh > /dev/null 2>&1
+```
+
+**Variáveis de ambiente:**
+
+- `AGENDAMENTO_MAX_HORAS_BACKUP` — horas sem um novo backup bem-sucedido por perfil até alertar
+  (padrão: `48`; ajuste se seu backup for semanal, não diário).
+- `AGENDAMENTO_MAX_HORAS_SIMULADO` — horas sem o simulado de restauração rodar com sucesso até
+  alertar (padrão: `192` = 8 dias, pra um agendamento semanal com margem).
+
+Também disponível no `painel` (opção 11).

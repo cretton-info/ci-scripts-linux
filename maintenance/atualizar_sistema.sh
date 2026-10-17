@@ -144,6 +144,7 @@ else
     if DEBIAN_FRONTEND=noninteractive apt-get full-upgrade -y \
         -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"; then
         log_ok "Atualização concluída."
+        marcar_execucao_ok "atualizar_sistema"
     else
         FALHOU=1
         log_error "apt-get full-upgrade falhou."

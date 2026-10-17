@@ -264,3 +264,23 @@ CONF
     [ "$status" -eq 0 ]
     [ "$output" = 'ok' ]
 }
+
+# --- marcar_execucao_ok -------------------------------------------------
+
+@test "marcar_execucao_ok: grava um timestamp legível em heartbeats/<nome>.last" {
+    run bash -c "CI_LOG_DIR='${TEST_TMP}/logs' source '${REPO_ROOT}/lib/common.sh'
+        marcar_execucao_ok 'teste_script'
+        cat '${TEST_TMP}/logs/heartbeats/teste_script.last'"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ ^[0-9]+$ ]]
+}
+
+@test "marcar_execucao_ok: chamar de novo atualiza o timestamp (não acumula linhas)" {
+    run bash -c "CI_LOG_DIR='${TEST_TMP}/logs' source '${REPO_ROOT}/lib/common.sh'
+        marcar_execucao_ok 'teste_script'
+        sleep 1
+        marcar_execucao_ok 'teste_script'
+        wc -l < '${TEST_TMP}/logs/heartbeats/teste_script.last'"
+    [ "$status" -eq 0 ]
+    [ "$(echo "$output" | tr -d ' ')" = '1' ]
+}

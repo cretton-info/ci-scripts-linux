@@ -135,6 +135,7 @@ echo ""
 echo "=========================================================="
 if [ "$FALHAS" -eq 0 ]; then
     log_ok "Simulado de restauração concluído sem falhas (${#PERFIS[@]} perfil(is) testado(s))."
+    marcar_execucao_ok "simulado_restauracao"
 else
     log_error "Simulado de restauração encontrou ${FALHAS} problema(s) — ver acima."
 fi

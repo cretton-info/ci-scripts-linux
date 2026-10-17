@@ -172,3 +172,19 @@ alert_webhook() {
         log_warn "Falha ao enviar alerta via webhook para: ${motivo}"
     fi
 }
+
+# Marca que um script terminou de rodar com sucesso, gravando um timestamp em
+# <pasta do log>/heartbeats/<nome>.last. Existe pra que outro processo (ex.:
+# maintenance/verificar_agendamentos.sh) detecte se o cron parou de disparar —
+# o alert_webhook só dispara de dentro do script, então não ajuda quando o
+# problema é o cron nunca chamar o script. Chame só no caminho de sucesso,
+# nunca em --dry-run nem depois de uma falha (senão o heartbeat mentiria).
+# Uso: marcar_execucao_ok "nome_curto"
+marcar_execucao_ok() {
+    local nome="$1"
+    local dir
+    dir="$(dirname "${LOG_FILE:-/tmp/ci-scripts-linux-logs/x}")/heartbeats"
+    mkdir -p "$dir" 2>/dev/null || dir="/tmp/ci-scripts-linux-heartbeats"
+    mkdir -p "$dir" 2>/dev/null || return 0
+    date +%s > "${dir}/${nome}.last" 2>/dev/null || true
+}

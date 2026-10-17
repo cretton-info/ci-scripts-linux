@@ -11,6 +11,14 @@ Pra saber a versão instalada numa máquina: `painel` mostra no cabeçalho, ou c
 
 ### Adicionado
 
+- `maintenance/verificar_agendamentos.sh` — detecta se o cron parou de chamar o backup (por
+  perfil), a atualização automática ou o simulado de restauração, mesmo sem nenhum deles ter
+  "falhado" no sentido que `alert_webhook` entende (o problema clássico: ninguém percebe que o
+  backup parou de rodar até precisar restaurar). Compara o heartbeat mais recente de cada um com
+  um limite esperado — pra atualização automática, estimado a partir da própria linha de cron
+  criada pelo `--agendar`. Nova função `marcar_execucao_ok` em `lib/common.sh`, chamada por
+  `backup_multiperfil.sh`, `atualizar_sistema.sh` e `simulado_restauracao.sh` ao terminar com
+  sucesso. Também disponível no `painel` (opção 11).
 - `maintenance/atualizar_sistema.sh` — só `apt-get update` + `apt-get full-upgrade`, sem o resto da
   limpeza do `manutencao_avancada.sh` (Docker, Flatpak, Snap etc.), pra deixar agendado sem
   supervisão com menos risco. Assistente embutido (`--agendar`/`--desagendar`) cria/remove a entrada
