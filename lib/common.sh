@@ -55,8 +55,26 @@ require_root() {
 
 # Preenche REAL_USER e USER_HOME com o usuário real por trás do sudo,
 # sem usar eval (evita risco de injeção via variáveis de ambiente).
+# Ordem: CI_REAL_USER (override explícito) > SUDO_USER > dono do script quando
+# roda como root sem sudo > usuário atual. O caso "root sem sudo" é o cron do
+# root (/etc/cron.d, crontab -e como root): sem SUDO_USER, o usuário real virava
+# o root e o backup ia pra /root/backups_sistema, com ~/Documentos de fora. Os
+# scripts ficam em ~/scripts do usuário (install.sh faz chown), então o dono do
+# arquivo é o usuário certo.
 detect_real_user() {
-    REAL_USER="${SUDO_USER:-${USER:-$(id -un)}}"
+    REAL_USER="${CI_REAL_USER:-}"
+    if [ -z "$REAL_USER" ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+        REAL_USER="$SUDO_USER"
+    fi
+    if [ -z "$REAL_USER" ] && [ "$EUID" -eq 0 ]; then
+        local script dono
+        script=$(readlink -f "${BASH_SOURCE[${#BASH_SOURCE[@]}-1]}" 2>/dev/null)
+        dono=$(stat -c %U "$script" 2>/dev/null)
+        if [ -n "$dono" ] && [ "$dono" != "root" ] && [ "$dono" != "UNKNOWN" ]; then
+            REAL_USER="$dono"
+        fi
+    fi
+    REAL_USER="${REAL_USER:-${USER:-$(id -un)}}"
     USER_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
     if [ -z "$USER_HOME" ]; then
         USER_HOME="${HOME:-/root}"
@@ -103,11 +121,12 @@ has_cmd() {
 # Roda rclone como o usuário real por trás do sudo, não como root — usa o
 # rclone.conf de quem configurou os remotes (não o de root) e os arquivos
 # enviados/baixados ficam com o dono certo, sem precisar de chown depois.
-# Requer detect_real_user já chamado antes (usa REAL_USER). Rodando sem sudo,
-# ou como o próprio root, chama o rclone normalmente.
+# Requer detect_real_user já chamado antes (usa REAL_USER). Rodando sem root,
+# ou quando o usuário real é o próprio root, chama o rclone normalmente. Não
+# depende de SUDO_USER: no cron do root ele não existe, mas REAL_USER sim.
 # Uso: rclone_usuario copy origem destino
 rclone_usuario() {
-    if [ "$EUID" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "${REAL_USER:-root}" != "root" ]; then
+    if [ "$EUID" -eq 0 ] && [ "${REAL_USER:-root}" != "root" ]; then
         sudo -u "$REAL_USER" -H rclone "$@"
     else
         rclone "$@"

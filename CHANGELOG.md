@@ -45,6 +45,17 @@ Pra saber a versão instalada numa máquina: `painel` mostra no cabeçalho, ou c
 
 ### Corrigido
 
+- Rodando pelo cron do root (`/etc/cron.d`, `crontab -e` como root — o próprio exemplo de crontab
+  do `backup/README.md`), sem `sudo`, `detect_real_user` concluía que o usuário real era o root: o
+  backup ia pra `/root/backups_sistema` em vez de `~/backups_sistema`, e o perfil `docs` procurava
+  `/root/Documentos` e saía só com o `/etc`, sem erro nenhum. Agora, como root e sem `SUDO_USER`,
+  usa o dono do script (os scripts ficam em `~/scripts` do usuário); `CI_REAL_USER` força um
+  usuário explicitamente. `rclone_usuario` também deixa de depender de `SUDO_USER`, pra o envio
+  remoto usar o `rclone.conf` do usuário real no cron. Achado real no PC da recepção em 2026-10-20,
+  depois de 18 dias de backup indo pro lugar errado.
+- `simulado_restauracao.sh` conta como falha um backup mais recente com mais de `IDADE_MAX_DIAS`
+  dias (padrão 3) — antes ele "passava" testando sempre o mesmo arquivo antigo enquanto o backup de
+  verdade tinha parado (ou ia pra outra pasta), escondendo o problema acima.
 - `backup_multiperfil.sh` agora exige root de verdade (`require_root`) antes de rodar — todos os
   4 perfis incluem `/etc` (chaves SSH, segredos do Dokploy, `/etc/shadow`), então sem sudo o `tar`
   sempre falhava com "Permission denied" em dezenas de arquivos e saía com código 2, sem nenhuma

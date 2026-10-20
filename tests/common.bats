@@ -96,6 +96,43 @@ teardown() {
     [ "$output" = "$(id -un)" ]
 }
 
+@test "detect_real_user: CI_REAL_USER tem prioridade sobre SUDO_USER" {
+    run bash -c "
+        CI_LOG_DIR='${TEST_TMP}/logs' source '${REPO_ROOT}/lib/common.sh'
+        export SUDO_USER='nao-deve-ser-usado' CI_REAL_USER='$(id -un)'
+        detect_real_user
+        echo \"\$REAL_USER\"
+    "
+    [ "$status" -eq 0 ]
+    [ "$output" = "$(id -un)" ]
+}
+
+@test "detect_real_user: SUDO_USER=root não conta como usuário real" {
+    [ "$EUID" -ne 0 ] || skip "teste pra usuário comum"
+    run bash -c "
+        CI_LOG_DIR='${TEST_TMP}/logs' source '${REPO_ROOT}/lib/common.sh'
+        export SUDO_USER=root
+        detect_real_user
+        echo \"\$REAL_USER\"
+    "
+    [ "$status" -eq 0 ]
+    [ "$output" = "$(id -un)" ]
+}
+
+@test "detect_real_user: root sem sudo (cron) usa o dono do script" {
+    [ "$EUID" -eq 0 ] || skip "precisa de root: sudo bats tests/common.bats -f 'root sem sudo'"
+    dono=nobody
+    cat > "${TEST_TMP}/script.sh" <<EOS
+source '${REPO_ROOT}/lib/common.sh'
+detect_real_user
+echo "\$REAL_USER"
+EOS
+    chown "$dono" "${TEST_TMP}/script.sh"
+    run env -u SUDO_USER USER=root CI_LOG_DIR="${TEST_TMP}/logs" bash "${TEST_TMP}/script.sh"
+    [ "$status" -eq 0 ]
+    [ "$output" = "$dono" ]
+}
+
 @test "detect_real_user: USER_HOME não fica vazio" {
     run bash -c "
         CI_LOG_DIR='${TEST_TMP}/logs' source '${REPO_ROOT}/lib/common.sh'

@@ -40,6 +40,10 @@ Detalhes em [docs/SCRIPTS.md](../docs/SCRIPTS.md#backupbackup_multiperfilsh) e
 0 12 * * * /home/<usuario>/scripts/backup_multiperfil.sh docs > /dev/null 2>&1
 ```
 
+No crontab do root não há `sudo`, então o script descobre o usuário real pelo dono do arquivo
+(`~/scripts` é do usuário) e grava em `/home/<usuario>/backups_sistema`. Pra forçar outro usuário:
+`CI_REAL_USER=<usuario>` antes do comando.
+
 ## Atenção
 
 Restaurar no modo "locais originais" sobrescreve arquivos do sistema em `/`. O script sempre lista o

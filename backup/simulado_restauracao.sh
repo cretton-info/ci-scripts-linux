@@ -13,6 +13,7 @@ detect_real_user
 
 DESTINO_BASE="${USER_HOME}/backups_sistema"
 ARQUIVO_CHAVE="${ARQUIVO_CHAVE:-etc/passwd}"
+IDADE_MAX_DIAS="${IDADE_MAX_DIAS:-3}"
 
 exibir_ajuda() {
     cat <<EOF
@@ -31,6 +32,10 @@ Variáveis de ambiente:
   ARQUIVO_CHAVE     Caminho (relativo à raiz do tar) que precisa existir no
                      backup pra ele ser considerado válido (padrão: etc/passwd,
                      presente em todo perfil porque /etc sempre é incluído)
+  IDADE_MAX_DIAS    Idade máxima, em dias, do backup mais recente de cada
+                     perfil (padrão: 3). Mais velho que isso conta como falha:
+                     o backup parou de rodar (ou está gravando em outro lugar)
+                     e o simulado estaria testando um arquivo antigo.
   WEBHOOK_URL       Se definida, alerta quando um simulado falha
 EOF
 }
@@ -38,6 +43,10 @@ EOF
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
     exibir_ajuda
     exit 0
+fi
+
+if ! [[ "$IDADE_MAX_DIAS" =~ ^[0-9]+$ ]] || [ "$IDADE_MAX_DIAS" -lt 1 ]; then
+    die "IDADE_MAX_DIAS inválido: '$IDADE_MAX_DIAS' (precisa ser um número inteiro >= 1)."
 fi
 
 [ -d "$DESTINO_BASE" ] || die "Diretório de backups não encontrado em: $DESTINO_BASE"
@@ -87,6 +96,16 @@ for PERFIL in "${PERFIS[@]}"; do
 
     ARQUIVO="${ARQUIVOS[0]}"
     log_info "Backup selecionado: $(basename "$ARQUIVO")"
+
+    # Backup velho é falha mesmo que restaure: sem isso o simulado "passa"
+    # testando sempre o mesmo arquivo antigo enquanto o backup de verdade parou
+    # (ou foi parar em outra pasta -- ex.: cron do root gravando em /root).
+    IDADE_DIAS=$(( ( $(date +%s) - $(stat -c %Y "$ARQUIVO") ) / 86400 ))
+    if [ "$IDADE_DIAS" -gt "$IDADE_MAX_DIAS" ]; then
+        log_warn "Backup mais recente do perfil '${PERFIL}' tem ${IDADE_DIAS} dia(s) (limite: ${IDADE_MAX_DIAS}) — o backup parou de rodar?"
+        FALHAS=$((FALHAS + 1))
+        alert_webhook "simulado_restauracao_${PERFIL}" "Backup mais recente do perfil '${PERFIL}' tem ${IDADE_DIAS} dia(s) (limite: ${IDADE_MAX_DIAS})."
+    fi
 
     # Mesma verificação de integridade do restaurar_backup.sh: checksum se
     # existir (mais confiável), senão teste de leitura do tar como fallback.

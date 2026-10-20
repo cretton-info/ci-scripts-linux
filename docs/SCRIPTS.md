@@ -21,13 +21,13 @@ Não é executado diretamente — é a biblioteca compartilhada que todo script 
 | `log_error "msg"` | Imprime `[ERRO]` em vermelho no terminal (stderr) **e grava em arquivo de log**. |
 | `die "msg"` | Chama `log_error` e encerra o script com `exit 1`. |
 | `require_root` | Aborta (`die`) se o script não estiver rodando como root/sudo. |
-| `detect_real_user` | Preenche `REAL_USER` e `USER_HOME` com o usuário real por trás do `sudo` (usa `getent passwd`, não `eval`). |
+| `detect_real_user` | Preenche `REAL_USER` e `USER_HOME` com o usuário real (usa `getent passwd`, não `eval`). Ordem: `CI_REAL_USER` (override) > `SUDO_USER` > dono do script, quando roda como root sem `sudo` (cron do root) > usuário atual. |
 | `load_conf arquivo VAR...` | Lê `VAR=valor` de um arquivo **sem executá-lo** (nunca faz `source`), aceitando só os nomes passados, tirando aspas em volta do valor e sem sobrescrever o que já veio do ambiente. Usado pelo `backup_multiperfil.sh` para o `backup.conf`. |
 | `confirm "pergunta"` | Pergunta s/N interativa. Retorna 0 (sucesso) se a resposta for `s`/`S`. |
 | `has_cmd nome` | Retorna 0 se o comando `nome` existe no `PATH`. |
 | `alert_webhook "motivo" "detalhe"` | Envia um alerta em JSON para `WEBHOOK_URL` (se definida), com cooldown por motivo. Usado por qualquer script para reportar falhas — não faz nada se `WEBHOOK_URL` não estiver definida. |
 | `json_escape "valor"` | Escapa uma string pra entrar com segurança dentro de um valor JSON (aspas, barra invertida, quebra de linha, tab e outros caracteres de controle, ex.: cores ANSI). Usado pelo modo `--json` de `health_check.sh` e `inventario_universal.sh`. |
-| `rclone_usuario comando ...` | Roda `rclone` como o usuário real por trás do `sudo`, não como root — usa o `rclone.conf` de quem configurou os remotes. Requer `detect_real_user` já chamado antes. Usado por `backup_multiperfil.sh` e `restaurar_backup.sh`. |
+| `rclone_usuario comando ...` | Roda `rclone` como o usuário real (via `sudo` ou cron do root), não como root — usa o `rclone.conf` de quem configurou os remotes. Requer `detect_real_user` já chamado antes. Usado por `backup_multiperfil.sh` e `restaurar_backup.sh`. |
 | `marcar_execucao_ok "nome"` | Grava um timestamp em `<pasta do log>/heartbeats/<nome>.last`, marcando que um script terminou com sucesso. Usado por `backup_multiperfil.sh` (por perfil), `atualizar_sistema.sh` e `simulado_restauracao.sh`, lido por `verificar_agendamentos.sh` pra detectar se o cron parou de chamar algum deles. |
 | `LOG_FILE` | Caminho do arquivo de log da execução atual (definido automaticamente ao sourcear). |
 
@@ -264,8 +264,13 @@ bash ~/scripts/simulado_restauracao.sh homelab       # só um perfil
 - `ARQUIVO_CHAVE` — caminho (relativo à raiz do `.tar.gz`) que precisa existir no backup extraído
   pra ele ser considerado válido (padrão: `etc/passwd` — presente em todo perfil, já que `/etc`
   sempre é incluído em `backup_multiperfil.sh`).
+- `IDADE_MAX_DIAS` — idade máxima, em dias, do backup mais recente de cada perfil (padrão: `3`).
+  Mais velho que isso conta como falha, mesmo que o arquivo restaure: significa que o backup parou
+  de rodar (ou está gravando em outra pasta) e o simulado estaria testando sempre o mesmo arquivo
+  antigo. Suba o valor se a máquina fica dias desligada ou o backup não é diário.
 - `WEBHOOK_URL` — se definida, alerta via [`alert_webhook`](#libcommonsh) quando um simulado falha
-  (perfil sem backup, checksum não confere, extração falha ou arquivo-chave ausente).
+  (perfil sem backup, backup velho demais, checksum não confere, extração falha ou arquivo-chave
+  ausente).
 
 **Exit codes:** `1` se qualquer perfil testado tiver falhado (útil pra cron detectar problema via
 código de saída, sem precisar parsear a saída); `0` se todos os perfis passaram.
