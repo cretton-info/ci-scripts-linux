@@ -15,7 +15,7 @@ detect_real_user
 # sobrescrita numa reinstalação). Variáveis já definidas no ambiente têm prioridade.
 # Lida sem "source": o arquivo é do usuário comum e este script roda como root.
 BACKUP_CONF="${BACKUP_CONF:-${SCRIPT_DIR}/backup.conf}"
-load_conf "$BACKUP_CONF" RETENCAO_DIAS EXCLUDE_PATTERNS RCLONE_REMOTO RCLONE_FLAGS WEBHOOK_URL ALERTA_COOLDOWN_HORAS
+load_conf "$BACKUP_CONF" RETENCAO_DIAS EXCLUDE_PATTERNS RCLONE_REMOTO RCLONE_FLAGS WEBHOOK_URL ALERTA_COOLDOWN_HORAS ORIGENS_EXTRAS
 
 DESTINO_BASE="${USER_HOME}/backups_sistema"
 RETENCAO_DIAS="${RETENCAO_DIAS:-7}"
@@ -61,6 +61,9 @@ Variáveis de ambiente:
                     Rodando via sudo, o rclone roda como o usuário real
                     (usa o rclone.conf dele, não o do root).
   RCLONE_FLAGS      Flags extras passadas ao rclone (ex.: "--fast-list").
+  ORIGENS_EXTRAS    Pastas a mais, separadas por vírgula, somadas a qualquer
+                    perfil (ex.: "~/cofre-obsidian"). Só pastas dentro do
+                    home do usuário real; o resto é ignorado com aviso.
 EOF
 }
 
@@ -133,6 +136,23 @@ case "$OPCAO" in
         exit 1
         ;;
 esac
+
+# Pastas extras do backup.conf, somadas à origem de qualquer perfil (ex.: um cofre do Obsidian
+# fora de ~/Documentos). Só valem pastas dentro do home do usuário real: o arquivo é do usuário
+# comum e o backup roda como root e é entregue (chown) ao usuário, então aceitar qualquer caminho
+# deixaria um processo sem privilégio empacotar /root ou outra pasta que ele não pode ler.
+if [ -n "${ORIGENS_EXTRAS:-}" ]; then
+    IFS=',' read -r -a EXTRAS <<< "$ORIGENS_EXTRAS"
+    for extra in "${EXTRAS[@]}"; do
+        [ -n "$extra" ] || continue
+        extra="${extra/#\~/$USER_HOME}"
+        real=$(realpath -m -- "$extra")
+        case "$real/" in
+            "$USER_HOME"/?*) ORIGEM_SOLICITADA+=("$real") ;;
+            *) log_warn "ORIGENS_EXTRAS: '$extra' fica fora de $USER_HOME — ignorado." ;;
+        esac
+    done
+fi
 
 # Lock de concorrência: evita que duas execuções do mesmo perfil rodem ao mesmo tempo
 # (ex.: cron disparando de novo enquanto a execução anterior ainda compacta uma origem grande).
