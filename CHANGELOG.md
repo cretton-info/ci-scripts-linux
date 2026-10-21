@@ -11,6 +11,8 @@ Pra saber a versão instalada numa máquina: `painel` mostra no cabeçalho, ou c
 
 ### Adicionado
 
+- `ORIGENS_EXTRAS` no `backup.conf` do `backup_multiperfil.sh`: pastas a mais somadas a qualquer
+  perfil (ex.: um cofre do Obsidian fora de `~/Documentos`), restritas ao home do usuário real.
 - `maintenance/verificar_agendamentos.sh` — detecta se o cron parou de chamar o backup (por
   perfil), a atualização automática ou o simulado de restauração, mesmo sem nenhum deles ter
   "falhado" no sentido que `alert_webhook` entende (o problema clássico: ninguém percebe que o

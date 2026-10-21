@@ -124,6 +124,10 @@ Vale só para este script — `restaurar_backup.sh` (`RETENCAO_PREVENTIVOS_DIAS`
   sistema quando o HD está desmontado. Via `sudo`, o rclone roda como o usuário real, com o
   `rclone.conf` dele. Defina em `backup.conf` ou use `sudo -E` para a variável chegar ao processo
   com privilégio.
+- `ORIGENS_EXTRAS` — pastas a mais, separadas por vírgula, somadas à origem de qualquer perfil (ex.:
+  `"~/cofre-obsidian"` para um cofre do Obsidian fora de `~/Documentos`). Só são aceitas pastas
+  dentro do home do usuário real (`~` é expandido para ele); qualquer outro caminho é ignorado com
+  aviso, porque o arquivo é do usuário comum e o backup roda como root.
 - `RCLONE_FLAGS` — flags extras passadas ao `rclone copy` (ex.: `"--transfers 4"`).
 - `WEBHOOK_URL` — se definida, alerta via [`alert_webhook`](#libcommonsh) quando não há nenhuma
   origem válida para o perfil, o `tar` falha, o backup sai corrompido logo após a criação, ou falha
