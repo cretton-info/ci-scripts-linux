@@ -11,6 +11,9 @@ Pra saber a versão instalada numa máquina: `painel` mostra no cabeçalho, ou c
 
 ### Adicionado
 
+- `status_frota.sh` alerta via `WEBHOOK_URL` (um alerta por host, cooldown independente) quando um
+  host fica `OFFLINE` ou em `ALERTA` — antes só mostrava na tabela, sem notificar nada rodando via
+  cron sem supervisão.
 - `maintenance/listar_agendamentos.sh` — lista de uma vez as linhas do crontab (root + usuário
   real) que chamam algum script deste repositório, pra auditar uma máquina sem precisar lembrar de
   `crontab -l | grep` manualmente. Complementa o `verificar_agendamentos.sh` (um lista o que está
@@ -57,6 +60,15 @@ Pra saber a versão instalada numa máquina: `painel` mostra no cabeçalho, ou c
 
 ### Corrigido
 
+- `status_frota.sh`: `ConnectTimeout` do SSH só cobre a fase de conexão — se o host respondia o
+  handshake mas o comando remoto travava (ex.: `df` pendurado num NFS fora do ar), a checagem da
+  frota inteira travava com ele, contrariando a própria promessa do script. Agora cada chamada
+  roda sob um `timeout` externo (3x o `SSH_TIMEOUT`) e com `ServerAliveInterval`/`ServerAliveCountMax`,
+  cobrindo o caso de a conexão morrer depois de aberta. Testado com um host simulado travado por 2
+  minutos — a checagem segue pros outros dentro do tempo esperado.
+- `alert_webhook` montava o payload JSON sem escapar `motivo`/`detalhe` — um detalhe com aspas ou
+  barra invertida gerava JSON inválido, mesmo já existindo `json_escape()` na mesma lib. Corrigido
+  (afeta todos os chamadores) e coberto por teste novo.
 - Rodando pelo cron do root (`/etc/cron.d`, `crontab -e` como root — o próprio exemplo de crontab
   do `backup/README.md`), sem `sudo`, `detect_real_user` concluía que o usuário real era o root: o
   backup ia pra `/root/backups_sistema` em vez de `~/backups_sistema`, e o perfil `docs` procurava

@@ -182,7 +182,8 @@ alert_webhook() {
 
     local payload
     payload=$(printf '{"hostname":"%s","script":"%s","motivo":"%s","detalhe":"%s","data":"%s"}' \
-        "$(hostname)" "$(basename "${0%.sh}")" "$motivo" "$detalhe" "$(date '+%Y-%m-%d %H:%M:%S')")
+        "$(json_escape "$(hostname)")" "$(json_escape "$(basename "${0%.sh}")")" \
+        "$(json_escape "$motivo")" "$(json_escape "$detalhe")" "$(date '+%Y-%m-%d %H:%M:%S')")
 
     if curl -fsS -m 10 -X POST -H 'Content-Type: application/json' -d "$payload" "$webhook" >/dev/null 2>&1; then
         date +%s > "$arquivo_estado" 2>/dev/null || true

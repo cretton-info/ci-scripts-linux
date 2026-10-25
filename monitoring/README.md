@@ -84,5 +84,13 @@ bash ~/scripts/status_frota.sh
 ```
 
 Requer `jq`, acesso SSH sem senha a cada host, e o `ci-scripts-linux` já instalado (`~/scripts/`)
-neles. Host fora do ar aparece como `OFFLINE` em vez de travar a checagem dos outros. Detalhes em
-[docs/SCRIPTS.md](../docs/SCRIPTS.md).
+neles. Host fora do ar (ou que trava — ex.: um `df` pendurado num NFS) aparece como `OFFLINE` em
+vez de travar a checagem dos outros, até num limite de tempo total por host. Com `WEBHOOK_URL`
+definida, alerta por host (cooldown independente) quando um host fica `OFFLINE` ou `ALERTA` —
+bom candidato pra rodar via cron:
+
+```
+0 * * * * WEBHOOK_URL="https://seu-n8n.exemplo.com/webhook/alerta" /home/<usuario>/scripts/status_frota.sh > /dev/null 2>&1
+```
+
+Detalhes em [docs/SCRIPTS.md](../docs/SCRIPTS.md).

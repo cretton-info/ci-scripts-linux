@@ -30,6 +30,9 @@ Variáveis de ambiente:
   LIMIAR_DISCO  Percentual de disco pra marcar ALERTA (padrão: 85)
   LIMIAR_MEM    Percentual de memória pra marcar ALERTA (padrão: 90)
   SSH_TIMEOUT   Timeout de conexão por host em segundos (padrão: 8)
+  WEBHOOK_URL   Se definida, alerta (um por host, com cooldown próprio por
+                host+motivo) quando um host fica OFFLINE ou em ALERTA —
+                dá pra rodar via cron sem precisar olhar o terminal.
 EOF
 }
 
@@ -59,12 +62,24 @@ echo "--------------------------------------------------------------------"
 
 PROBLEMAS=0
 for host in "${HOSTS[@]}"; do
-    JSON=$(ssh -o ConnectTimeout="$SSH_TIMEOUT" -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+    # ConnectTimeout só cobre a fase de conexão/autenticação — se o host responde o
+    # handshake mas o comando remoto trava depois (ex.: "df" pendurado num NFS fora
+    # do ar, "docker ps" sem resposta), isso aqui sozinho NÃO protege os outros hosts
+    # da fila. ServerAlive* detecta a conexão morta e o "timeout" externo é a rede de
+    # segurança final, cobrindo até a decisão do ssh de desistir.
+    JSON=$(timeout "$((SSH_TIMEOUT * 3))" ssh -o ConnectTimeout="$SSH_TIMEOUT" -o BatchMode=yes \
+        -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=5 -o ServerAliveCountMax=2 \
         "$host" 'bash ~/scripts/health_check.sh --json 2>/dev/null' 2>/dev/null)
+
+    # Chave de cooldown por host (sanitizada): mesmo host com dois alertas no
+    # mesmo motivo não dobra a notificação, mas hosts diferentes nunca
+    # compartilham cooldown entre si.
+    HOST_CHAVE=$(echo "$host" | tr -cs '[:alnum:]' '_')
 
     if [ -z "$JSON" ] || ! echo "$JSON" | jq empty 2>/dev/null; then
         printf "%-22s %-8s %6s %7s %9s %9s\n" "$host" "OFFLINE" "-" "-" "-" "-"
         PROBLEMAS=$((PROBLEMAS + 1))
+        alert_webhook "frota_offline_${HOST_CHAVE}" "Host '${host}' não respondeu via SSH (fora do ar, sem acesso, ou o health_check.sh travou/falhou no host remoto)."
         continue
     fi
 
@@ -74,12 +89,28 @@ for host in "${HOSTS[@]}"; do
     INTERNET=$(echo "$JSON" | jq -r 'if .conectividade.internet then "sim" else "NAO" end')
 
     STATUS="OK"
-    [ "$MEM" != "?" ] && [ "$MEM" -ge "$LIMIAR_MEM" ] 2>/dev/null && STATUS="ALERTA"
-    [ "$DISCO_MAX" -ge "$LIMIAR_DISCO" ] 2>/dev/null && STATUS="ALERTA"
-    [ "$SERVICOS" -gt 0 ] 2>/dev/null && STATUS="ALERTA"
-    [ "$INTERNET" = "NAO" ] && STATUS="ALERTA"
+    MOTIVOS_ALERTA=()
+    if [ "$MEM" != "?" ] && [ "$MEM" -ge "$LIMIAR_MEM" ] 2>/dev/null; then
+        STATUS="ALERTA"; MOTIVOS_ALERTA+=("memória em ${MEM}% (limiar ${LIMIAR_MEM}%)")
+    fi
+    if [ "$DISCO_MAX" -ge "$LIMIAR_DISCO" ] 2>/dev/null; then
+        STATUS="ALERTA"; MOTIVOS_ALERTA+=("disco em ${DISCO_MAX}% (limiar ${LIMIAR_DISCO}%)")
+    fi
+    if [ "$SERVICOS" -gt 0 ] 2>/dev/null; then
+        STATUS="ALERTA"; MOTIVOS_ALERTA+=("${SERVICOS} serviço(s) systemd falhando")
+    fi
+    if [ "$INTERNET" = "NAO" ]; then
+        STATUS="ALERTA"; MOTIVOS_ALERTA+=("sem conectividade com a internet")
+    fi
 
-    [ "$STATUS" = "ALERTA" ] && PROBLEMAS=$((PROBLEMAS + 1))
+    if [ "$STATUS" = "ALERTA" ]; then
+        PROBLEMAS=$((PROBLEMAS + 1))
+        # "${array[*]}" com IFS custom só usa o 1º caractere como separador —
+        # não dá pra juntar com ", " assim. printf + remover a sobra do fim funciona.
+        DETALHE_ALERTA=$(printf '%s, ' "${MOTIVOS_ALERTA[@]}")
+        DETALHE_ALERTA="${DETALHE_ALERTA%, }"
+        alert_webhook "frota_alerta_${HOST_CHAVE}" "Host '${host}': ${DETALHE_ALERTA}."
+    fi
 
     printf "%-22s %-8s %6s %7s %9s %9s\n" "$host" "$STATUS" "$MEM" "$DISCO_MAX" "$SERVICOS" "$INTERNET"
 done

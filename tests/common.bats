@@ -240,6 +240,33 @@ EOF
     [ "$CHAMADAS" -eq 1 ]
 }
 
+@test "alert_webhook: escapa aspas e barra invertida no payload (JSON válido)" {
+    mkdir -p "${TEST_TMP}/bin"
+    PAYLOAD_CAPTURADO="${TEST_TMP}/payload.json"
+    cat > "${TEST_TMP}/bin/curl" <<'EOF'
+#!/bin/bash
+for ((i=1; i<=$#; i++)); do
+    if [ "${!i}" = "-d" ]; then
+        j=$((i+1))
+        printf '%s' "${!j}" > "$CI_TEST_PAYLOAD_FILE"
+    fi
+done
+exit 0
+EOF
+    chmod +x "${TEST_TMP}/bin/curl"
+
+    run bash -c "
+        export PATH='${TEST_TMP}/bin:${PATH}'
+        export CI_TEST_PAYLOAD_FILE='${PAYLOAD_CAPTURADO}'
+        CI_LOG_DIR='${TEST_TMP}/logs' source '${REPO_ROOT}/lib/common.sh'
+        export WEBHOOK_URL='http://exemplo.invalido/'
+        alert_webhook 'motivo_aspas' 'detalhe com \"aspas\" e barra \\ invertida'
+    "
+    [ "$status" -eq 0 ]
+    run jq empty "$PAYLOAD_CAPTURADO"
+    [ "$status" -eq 0 ]
+}
+
 @test "alert_webhook: motivos diferentes não compartilham cooldown" {
     mkdir -p "${TEST_TMP}/bin"
     CONTADOR="${TEST_TMP}/chamadas_curl"

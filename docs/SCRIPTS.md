@@ -52,14 +52,18 @@ estiver definida.
 
 - Payload: `{"hostname":"...","script":"...","motivo":"...","detalhe":"...","data":"..."}` — `script`
   é o nome do arquivo que chamou (ex.: `backup_multiperfil`), útil para distinguir a origem quando
-  vários scripts alertam pro mesmo webhook.
+  vários scripts alertam pro mesmo webhook. `hostname`, `script`, `motivo` e `detalhe` passam por
+  [`json_escape`](#libcommonsh) antes de entrar no payload — sem isso, um `detalhe` com aspas ou
+  barra invertida (ex.: um caminho do Windows, ou saída de outro comando) geraria JSON inválido.
 - **Cooldown por motivo:** não reenvia o mesmo `motivo` antes de `ALERTA_COOLDOWN_HORAS` horas
   (padrão: `6`) — evita spam se o problema persistir entre execuções. O estado fica em arquivos
   `.last` dentro de `<diretório do log>/alertas/`, limpos manualmente se quiser resetar o cooldown.
 - Se `WEBHOOK_URL` estiver definida mas `curl` não existir, avisa e segue sem travar o script.
 - Quem chama hoje: `health_check.sh` (disco/memória/serviços), `backup_multiperfil.sh` (origem
-  ausente, tar falhou, backup corrompido), `restaurar_backup.sh` (checksum não confere, espaço
-  insuficiente) e `manutencao_avancada.sh` (falha grave de pacotes).
+  ausente, tar falhou, backup corrompido, falha no envio remoto), `restaurar_backup.sh` (checksum
+  não confere, espaço insuficiente), `manutencao_avancada.sh` (falha grave de pacotes),
+  `simulado_restauracao.sh` (backup não restaura ou está velho) e `status_frota.sh` (host offline
+  ou em alerta).
 
 ---
 
@@ -394,8 +398,20 @@ bash ~/scripts/status_frota.sh
 - `HOSTS_CONF` — caminho do arquivo de hosts (padrão: `hosts.conf` ao lado do script).
 - `LIMIAR_DISCO` / `LIMIAR_MEM` — mesmos limiares do `health_check.sh` (padrão: `85`/`90`), usados
   aqui só para decidir se a linha do host aparece como `ALERTA` na tabela.
-- `SSH_TIMEOUT` — timeout de conexão por host em segundos (padrão: `8`) — um host fora do ar não
-  trava a checagem dos outros, só aparece como `OFFLINE`.
+- `SSH_TIMEOUT` — timeout de conexão por host em segundos (padrão: `8`).
+- `WEBHOOK_URL` — se definida, alerta via [`alert_webhook`](#libcommonsh) pra cada host que ficar
+  `OFFLINE` ou `ALERTA` (motivo `frota_offline_<host>` ou `frota_alerta_<host>`, cooldown
+  independente por host — um host com problema não atrasa o alerta dos outros). Dá pra rodar via
+  cron sem precisar olhar o terminal.
+
+**Proteção contra host "travado" (não só "fora do ar"):** `ConnectTimeout` só cobre a fase de
+conexão/autenticação do SSH — se o host responde o handshake mas o comando remoto trava depois (ex.:
+`df` pendurado num NFS fora do ar, `docker ps` sem resposta), isso sozinho não protegeria os outros
+hosts da fila. Por isso cada chamada roda sob `timeout $((SSH_TIMEOUT * 3))` e com
+`ServerAliveInterval=5`/`ServerAliveCountMax=2` (detecta conexão morta achando que ainda está viva),
+pra garantir o limite de tempo mesmo depois que a conexão já foi aberta. Testado de verdade com um
+host simulado que trava por 2 minutos: a checagem segue pros outros hosts dentro do tempo esperado,
+sem travar a fila inteira.
 
 **Status `ALERTA`** quando memória ou disco passam do limiar, há algum serviço `systemd` falhando,
 ou não há conectividade com a internet naquele host. **`OFFLINE`** quando o SSH falha ou a resposta
