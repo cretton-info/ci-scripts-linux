@@ -11,6 +11,16 @@ Pra saber a versão instalada numa máquina: `painel` mostra no cabeçalho, ou c
 
 ### Adicionado
 
+- `maintenance/listar_agendamentos.sh` — lista de uma vez as linhas do crontab (root + usuário
+  real) que chamam algum script deste repositório, pra auditar uma máquina sem precisar lembrar de
+  `crontab -l | grep` manualmente. Complementa o `verificar_agendamentos.sh` (um lista o que está
+  configurado, o outro confere se ainda está rodando). Também disponível no `painel` (opção 12).
+- Aviso de criptografia ausente no backup remoto: `backup_multiperfil.sh` detecta (`rclone config
+  show`) se cada destino não-local de `RCLONE_REMOTO` é do tipo `crypt`, e avisa (`log_warn`, não
+  bloqueia o envio) quando não é — o backup inclui `/etc` (chaves SSH, segredos) e às vezes dados
+  de cliente, então subir sem cifrar pro armazenamento de terceiros merece um aviso ativo, não só
+  uma seção de documentação que depende de alguém ler antes. Guia de como criar o remote `crypt`
+  em `docs/BACKUP_REMOTO.md`.
 - `ORIGENS_EXTRAS` no `backup.conf` do `backup_multiperfil.sh`: pastas a mais somadas a qualquer
   perfil (ex.: um cofre do Obsidian fora de `~/Documentos`), restritas ao home do usuário real.
 - `maintenance/verificar_agendamentos.sh` — detecta se o cron parou de chamar o backup (por

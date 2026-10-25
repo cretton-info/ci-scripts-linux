@@ -56,10 +56,11 @@ while true; do
     echo " 9) 🚦 Status da Frota (vários hosts via SSH)"
     echo " 10) ⏰ Agendar Atualização Automática (apt update + full-upgrade)"
     echo " 11) ✅ Verificar Agendamentos (o cron ainda está rodando?)"
+    echo " 12) 📋 Listar Agendamentos (o que está no crontab agora)"
     echo "----------------------------------------------------------"
     echo " 0) ❌ Sair"
     echo "=========================================================="
-    read -r -p "Escolha uma opção [0-11]: " OPCAO
+    read -r -p "Escolha uma opção [0-12]: " OPCAO
 
     case "$OPCAO" in
         1) executar "health_check.sh" ;;
@@ -73,6 +74,7 @@ while true; do
         9) executar "status_frota.sh" ;;
         10) executar "atualizar_sistema.sh" sudo --agendar ;;
         11) executar "verificar_agendamentos.sh" sudo ;;
+        12) executar "listar_agendamentos.sh" sudo ;;
         0)
             echo -e "\nSaindo... Até logo!"
             exit 0

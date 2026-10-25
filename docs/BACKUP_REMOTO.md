@@ -173,7 +173,27 @@ cliente. Duas opções, do mais simples ao mais robusto:
   Recomendado se os backups guardam dados de cliente (ex.: perfil `homelab` com dumps de banco).
   Documentação: https://rclone.org/crypt/
 
-Se quiser, isso pode ser configurado depois — não bloqueia o uso básico deste guia.
+Se quiser, isso pode ser configurado depois — não bloqueia o uso básico deste guia. O
+`backup_multiperfil.sh` detecta sozinho se o destino configurado é do tipo `crypt`
+(`rclone config show <nome>`) e avisa (`log_warn`, não bloqueia o envio) quando não é — pra não
+depender de alguém lembrar de ler esta seção antes de configurar em produção.
+
+**Como criar o remote `crypt` depois de já ter o `gdrive` configurado:**
+
+```bash
+rclone config
+# n) New remote
+# name> gdrive_cripto
+# Storage> crypt
+# remote> gdrive:backups-ci-scripts-linux   (o remote "de baixo", já configurado)
+# filename_encryption> standard
+# password> (defina uma senha forte — sem ela, não tem como decifrar os backups depois)
+```
+
+A partir daí, troque `RCLONE_REMOTO="gdrive:..."` por `RCLONE_REMOTO="gdrive_cripto:..."` no
+`backup.conf` — o aviso de criptografia ausente para de aparecer, e os arquivos sobem cifrados
+(continuam legíveis normalmente pelo `restaurar_backup.sh`, que usa o mesmo remote pra baixar de
+volta e decifrar na hora).
 
 ## 8. Limites a saber
 

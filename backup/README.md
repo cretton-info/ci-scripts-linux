@@ -132,6 +132,12 @@ RCLONE_REMOTO="b2:meu-bucket/cliente-x" RCLONE_FLAGS="--transfers 4" sudo -E ~/s
 Requer o binário `rclone` instalado e configurado (`rclone config`) no mesmo usuário/root que roda
 o script — se não estiver instalado, o script apenas avisa e segue com o backup local normalmente.
 
+**Aviso de segurança (criptografia):** todo perfil inclui `/etc` (chaves SSH, segredos do Dokploy,
+etc.) e alguns guardam dados de cliente — se o destino em `RCLONE_REMOTO` não for um remote do tipo
+`crypt` (ver [docs/BACKUP_REMOTO.md § Segurança](../docs/BACKUP_REMOTO.md)), o script avisa
+(`log_warn`) a cada execução, sem bloquear o envio. Destino local (HD externo) nunca gera esse
+aviso — a preocupação é só com armazenamento de terceiros sem controle físico sobre o disco.
+
 **Passo a passo completo pra configurar o Google Drive** (criação do remote, autenticação sem
 navegador no servidor, restringir a uma pasta, criptografia opcional):
 [docs/BACKUP_REMOTO.md](../docs/BACKUP_REMOTO.md).

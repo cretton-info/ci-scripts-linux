@@ -123,7 +123,11 @@ Vale só para este script — `restaurar_backup.sh` (`RETENCAO_PREVENTIVOS_DIAS`
   senão o envio pra ela é pulado com aviso (e alerta via webhook), para não gravar no disco do
   sistema quando o HD está desmontado. Via `sudo`, o rclone roda como o usuário real, com o
   `rclone.conf` dele. Defina em `backup.conf` ou use `sudo -E` para a variável chegar ao processo
-  com privilégio.
+  com privilégio. **Aviso de criptografia:** pra cada destino que não começa com `/`, o script
+  confere (`rclone config show <nome>`) se o remote é do tipo `crypt`; se não for, avisa
+  (`log_warn`, não bloqueia) que o backup — inclui `/etc` — sobe sem cifrar pro armazenamento de
+  terceiros (ver [docs/BACKUP_REMOTO.md § 7](BACKUP_REMOTO.md)). Destino local nunca gera esse
+  aviso.
 - `ORIGENS_EXTRAS` — pastas a mais, separadas por vírgula, somadas à origem de qualquer perfil (ex.:
   `"~/cofre-obsidian"` para um cofre do Obsidian fora de `~/Documentos`). Só são aceitas pastas
   dentro do home do usuário real (`~` é expandido para ele); qualquer outro caminho é ignorado com
@@ -666,6 +670,30 @@ estiver em dia (ou nada estiver configurado). Não altera nada no sistema — s�
 
 ---
 
+## maintenance/listar_agendamentos.sh
+
+**O que faz:** mostra de uma vez só todas as linhas do crontab (do root e do usuário real) que
+chamam algum script deste repositório — visão unificada pra auditar rapidinho uma máquina, sem
+precisar lembrar de rodar `crontab -l | grep ...` manualmente toda vez. Complementa o
+`verificar_agendamentos.sh`: este lista **o que está configurado**; aquele confere **se ainda está
+rodando de verdade**.
+
+**Requisitos:** **sempre roda com `sudo`** (precisa ler o crontab do root e, se o usuário real não
+for root, também o dele via `crontab -u`).
+
+**Uso:**
+
+```bash
+sudo ~/scripts/listar_agendamentos.sh
+```
+
+Agrupa por crontab (root primeiro, depois o do usuário real, se for diferente) e mostra
+`(nenhum agendamento encontrado)` em vez de ficar em branco quando não há nada — mesmo critério de
+busca usado pelo `verificar_agendamentos.sh` (qualquer linha referenciando um dos scripts
+instalados em `~/scripts/`). Só leitura, não altera nada.
+
+---
+
 ## panel/painel.sh
 
 **O que faz:** menu interativo central (TUI simples em loop) que dá acesso a todos os outros
@@ -698,6 +726,7 @@ O cabeçalho mostra a versão instalada (lida de `~/scripts/VERSION`, gravada pe
 | 9 | `status_frota.sh` | não |
 | 10 | `atualizar_sistema.sh --agendar` | sim |
 | 11 | `verificar_agendamentos.sh` | sim |
+| 12 | `listar_agendamentos.sh` | sim |
 | 0 | sai do painel | — |
 
 \* `backup_multiperfil.sh` não exige `sudo`, mas normalmente precisa dele pra conseguir ler `/etc`.

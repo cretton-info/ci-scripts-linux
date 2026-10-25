@@ -5,6 +5,7 @@
 | `manutencao_avancada.sh` | Rotina completa de manutenção (9 etapas): `apt full-upgrade`, correção de pacotes quebrados, `autoremove --purge`, limpeza do journal, Flatpak, Snap, Docker (com confirmação), lixeira/miniaturas do usuário, TRIM de SSD, e verificação de reboot pendente ao final. Requer `sudo`. |
 | `atualizar_sistema.sh` | Só `apt update` + `apt full-upgrade`, nada mais — mais leve e previsível que a manutenção completa pra deixar agendado sem supervisão. Tem assistente embutido (`--agendar`) pra criar o agendamento no crontab do root. Requer `sudo`. |
 | `verificar_agendamentos.sh` | Verifica se o backup (por perfil), a atualização automática e o simulado de restauração ainda estão sendo chamados pelo cron — alerta se algum estiver atrasado ou nunca tiver rodado com sucesso apesar de agendado. Requer `sudo`. |
+| `listar_agendamentos.sh` | Lista de uma vez todas as linhas do crontab (root + usuário real) que chamam algum script deste repositório — visão unificada pra auditar uma máquina sem precisar lembrar de `crontab -l \| grep`. Requer `sudo`. |
 
 ## Uso
 
@@ -99,3 +100,21 @@ Bom candidato pra rodar diariamente via cron, com `WEBHOOK_URL` definida:
   alertar (padrão: `192` = 8 dias, pra um agendamento semanal com margem).
 
 Também disponível no `painel` (opção 11).
+
+## O que está agendado agora? (`listar_agendamentos.sh`)
+
+Enquanto o `verificar_agendamentos.sh` confere se o cron ainda está rodando de verdade, o
+`listar_agendamentos.sh` só mostra **o que está configurado** — útil pra auditar rapidinho uma
+máquina de cliente sem precisar lembrar de `crontab -l | grep ci-scripts-linux` toda vez (e, se o
+backup ou o simulado rodarem no crontab do usuário real em vez do root, teria que conferir os dois
+separadamente).
+
+```bash
+sudo ~/scripts/listar_agendamentos.sh
+```
+
+Mostra as linhas do crontab do root e, se o usuário real não for root, também as do crontab dele —
+qualquer linha que chame `backup_multiperfil.sh`, `restaurar_backup.sh`,
+`simulado_restauracao.sh`, `atualizar_sistema.sh`, `verificar_agendamentos.sh`,
+`manutencao_avancada.sh`, `health_check.sh`, `network_scanner.sh`, `status_frota.sh`,
+`inventario_universal.sh` ou `setup_pos_instalacao.sh`. Também disponível no `painel` (opção 12).

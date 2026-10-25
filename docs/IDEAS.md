@@ -1,7 +1,49 @@
 # Ideias e Melhorias Futuras
 
-Backlog de sugestões levantadas em revisão do repositório (2026-09-30). Não são compromissos, só
-ideias anotadas para não perder — implementar sob demanda.
+Backlog de sugestões levantadas em revisão do repositório (2026-09-30, atualizado 2026-10-25). Não
+são compromissos, só ideias anotadas para não perder — implementar sob demanda.
+
+## 💾 Backup remoto (adicionado em outubro/2026)
+
+- ~~**Envio remoto do backup (rclone)**~~ — feito: `RCLONE_REMOTO` no `backup_multiperfil.sh`,
+  múltiplos destinos simultâneos (rclone e/ou pasta local), configurável via `backup.conf`.
+  Guia completo pro Google Drive em `docs/BACKUP_REMOTO.md`.
+- ~~**Restaurar a partir do remoto**~~ — feito: `restaurar_backup.sh` baixa do remoto antes de
+  restaurar quando o backup local não existe mais (recuperação de desastre de verdade, não só
+  "ter uma cópia na nuvem").
+- ~~**Pastas extras no backup (`ORIGENS_EXTRAS`)**~~ — feito: soma pastas extras a qualquer perfil
+  (ex.: cofre do Obsidian fora de `~/Documentos`), restrito ao home do usuário real.
+- ~~**Aviso de criptografia ausente**~~ — feito: `backup_multiperfil.sh` detecta se o destino
+  remoto não é do tipo `crypt` do rclone e avisa (não bloqueia) — o backup inclui `/etc` e às vezes
+  dados de cliente.
+
+## ⏰ Agendamento (adicionado em outubro/2026)
+
+- ~~**Agendar atualização automática do sistema**~~ — feito: `maintenance/atualizar_sistema.sh`
+  (só `apt update` + `full-upgrade`, mais leve que a manutenção completa), com assistente
+  `--agendar`/`--desagendar` que grava direto no crontab do root.
+- ~~**Detectar cron que parou de rodar**~~ — feito: `maintenance/verificar_agendamentos.sh` +
+  heartbeat (`marcar_execucao_ok` em `lib/common.sh`) gravado pelo backup (por perfil), pela
+  atualização automática e pelo simulado de restauração — alerta se algum estiver atrasado ou
+  nunca tiver rodado com sucesso apesar de agendado. Validou a própria necessidade: um bug real
+  (ver abaixo) deixou o backup de documentos rodando errado por 18 dias sem ninguém notar.
+- ~~**Visão unificada do que está agendado**~~ — feito: `maintenance/listar_agendamentos.sh`,
+  lista as linhas do crontab (root + usuário real) relacionadas ao repositório de uma vez.
+
+## 🐛 Bugs reais encontrados em produção
+
+- ~~**`detect_real_user` caía pro root rodando sem `sudo` no cron do root**~~ — corrigido: achado
+  no PC da recepção de um cliente (backup do perfil `docs` sem `~/Documentos` por 18 dias, sem
+  nenhum erro visível). Prioridade agora: `CI_REAL_USER` > `SUDO_USER` > dono do script > usuário
+  atual. `rclone_usuario` também parou de depender de `SUDO_USER`.
+- ~~**`simulado_restauracao.sh` passava testando um backup velho**~~ — corrigido: agora reprova se
+  o backup mais recente do perfil tiver mais de `IDADE_MAX_DIAS` (padrão 3) — antes um backup
+  parado de rodar silenciosamente ainda "passava" o simulado testando o último arquivo que
+  existia, por mais antigo que fosse.
+- ~~**`ALERTA_COOLDOWN_HORAS` não tinha efeito via `backup.conf`**~~ — corrigido: faltava na lista
+  de variáveis aceitas pelo `load_conf`.
+- ~~**`rclone copy` não aceita duas origens + destino numa chamada**~~ — corrigido: uma chamada por
+  arquivo (`.tar.gz` e `.sha256` separados).
 
 ## 🔔 Observabilidade
 
@@ -62,5 +104,5 @@ ideias anotadas para não perder — implementar sob demanda.
 
 ---
 
-Todos os itens deste backlog foram implementados (última atualização: 2026-09-30, release
-`v1.0.0`). Novas ideias, anote aqui.
+Todos os itens deste backlog foram implementados (última atualização: 2026-10-25). Novas ideias,
+anote aqui.

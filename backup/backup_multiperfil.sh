@@ -283,6 +283,18 @@ if [ -n "${RCLONE_REMOTO:-}" ]; then
                 alert_webhook "backup_destino_local_ausente" "Perfil '${NOME_PERFIL}': destino local ${remoto} não existe."
                 continue
             fi
+            # Aviso de segurança: todo perfil inclui /etc (chaves SSH, segredos do
+            # Dokploy, /etc/shadow) e alguns perfis têm dados de cliente — sem uma
+            # camada "crypt" do rclone, isso sobe pro armazenamento de terceiros sem
+            # criptografia extra (além da que o próprio provedor já faz). Só avisa,
+            # não bloqueia o envio: nem todo cliente/caso precisa disso (ver
+            # docs/BACKUP_REMOTO.md § Segurança).
+            if [[ "$remoto" != /* ]]; then
+                TIPO_REMOTO=$(rclone_usuario config show "${remoto%%:*}" 2>/dev/null | awk -F'= ?' '/^type/{print $2; exit}')
+                if [ -n "$TIPO_REMOTO" ] && [ "$TIPO_REMOTO" != "crypt" ]; then
+                    log_warn "Destino '${remoto%%:*}:' não usa criptografia 'crypt' do rclone — o backup (inclui /etc) sobe sem cifrar antes de ir pro armazenamento de terceiros. Ver docs/BACKUP_REMOTO.md § Segurança."
+                fi
+            fi
             RCLONE_DESTINO="${remoto%/}/${NOME_PERFIL}/"
             log_info "Enviando backup para remoto: $RCLONE_DESTINO"
             # rclone copy aceita só um arquivo de origem por vez (dest é sempre um diretório aqui)
