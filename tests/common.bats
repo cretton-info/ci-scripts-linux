@@ -267,6 +267,39 @@ EOF
     [ "$status" -eq 0 ]
 }
 
+@test "alert_webhook: URL do Telegram vira sendMessage com chat_id e texto" {
+    mkdir -p "${TEST_TMP}/bin"
+    PAYLOAD_CAPTURADO="${TEST_TMP}/payload.json"
+    URL_CAPTURADA="${TEST_TMP}/url.txt"
+    cat > "${TEST_TMP}/bin/curl" <<'EOF'
+#!/bin/bash
+for ((i=1; i<=$#; i++)); do
+    if [ "${!i}" = "-d" ]; then
+        j=$((i+1))
+        printf '%s' "${!j}" > "$CI_TEST_PAYLOAD_FILE"
+    fi
+done
+printf '%s' "${!#}" > "$CI_TEST_URL_FILE"
+exit 0
+EOF
+    chmod +x "${TEST_TMP}/bin/curl"
+
+    run bash -c "
+        export PATH='${TEST_TMP}/bin:${PATH}'
+        export CI_TEST_PAYLOAD_FILE='${PAYLOAD_CAPTURADO}'
+        export CI_TEST_URL_FILE='${URL_CAPTURADA}'
+        CI_LOG_DIR='${TEST_TMP}/logs' source '${REPO_ROOT}/lib/common.sh'
+        export WEBHOOK_URL='https://api.telegram.org/bot123:ABC-def/sendMessage?chat_id=-100987'
+        alert_webhook 'disco_raiz' 'uso em \"95%\"'
+    "
+    [ "$status" -eq 0 ]
+    [ "$(cat "$URL_CAPTURADA")" = "https://api.telegram.org/bot123:ABC-def/sendMessage" ]
+    run jq -r '.chat_id' "$PAYLOAD_CAPTURADO"
+    [ "$output" = "-100987" ]
+    run jq -r '.text' "$PAYLOAD_CAPTURADO"
+    [[ "$output" == *'disco_raiz: uso em "95%"'* ]]
+}
+
 @test "alert_webhook: motivos diferentes não compartilham cooldown" {
     mkdir -p "${TEST_TMP}/bin"
     CONTADOR="${TEST_TMP}/chamadas_curl"
