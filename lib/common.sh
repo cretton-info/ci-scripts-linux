@@ -180,10 +180,24 @@ alert_webhook() {
         fi
     fi
 
-    local payload
-    payload=$(printf '{"hostname":"%s","script":"%s","motivo":"%s","detalhe":"%s","data":"%s"}' \
-        "$(json_escape "$(hostname)")" "$(json_escape "$(basename "${0%.sh}")")" \
-        "$(json_escape "$motivo")" "$(json_escape "$detalhe")" "$(date '+%Y-%m-%d %H:%M:%S')")
+    local payload host script data
+    host="$(hostname)"
+    script="$(basename "${0%.sh}")"
+    data="$(date '+%Y-%m-%d %H:%M:%S')"
+    # Telegram: WEBHOOK_URL no formato
+    #   https://api.telegram.org/bot<TOKEN>/sendMessage?chat_id=<ID>
+    # A API do bot espera {"chat_id","text"}, não o JSON genérico abaixo — então
+    # o chat_id sai da URL e o alerta vira uma mensagem de texto legível.
+    if [[ "$webhook" =~ ^(https://api\.telegram\.org/bot[^/?]+/sendMessage)\?chat_id=(-?[0-9]+)$ ]]; then
+        local texto
+        texto="⚠️ ${host} · ${script}"$'\n'"${motivo}: ${detalhe}"$'\n'"${data}"
+        webhook="${BASH_REMATCH[1]}"
+        payload=$(printf '{"chat_id":"%s","text":"%s"}' "${BASH_REMATCH[2]}" "$(json_escape "$texto")")
+    else
+        payload=$(printf '{"hostname":"%s","script":"%s","motivo":"%s","detalhe":"%s","data":"%s"}' \
+            "$(json_escape "$host")" "$(json_escape "$script")" \
+            "$(json_escape "$motivo")" "$(json_escape "$detalhe")" "$data")
+    fi
 
     if curl -fsS -m 10 -X POST -H 'Content-Type: application/json' -d "$payload" "$webhook" >/dev/null 2>&1; then
         date +%s > "$arquivo_estado" 2>/dev/null || true

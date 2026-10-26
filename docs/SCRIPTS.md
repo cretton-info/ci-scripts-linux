@@ -55,6 +55,10 @@ estiver definida.
   vários scripts alertam pro mesmo webhook. `hostname`, `script`, `motivo` e `detalhe` passam por
   [`json_escape`](#libcommonsh) antes de entrar no payload — sem isso, um `detalhe` com aspas ou
   barra invertida (ex.: um caminho do Windows, ou saída de outro comando) geraria JSON inválido.
+- **Telegram:** com `WEBHOOK_URL="https://api.telegram.org/bot<TOKEN>/sendMessage?chat_id=<ID>"`, o
+  alerta vai no formato da API do bot (`{"chat_id","text"}`) em vez do payload acima: chega como
+  mensagem `⚠️ <hostname> · <script>` / `<motivo>: <detalhe>` / `<data>`. O token fica só na URL
+  (no `backup.conf` ou no ambiente do cron) — nunca no repositório.
 - **Cooldown por motivo:** não reenvia o mesmo `motivo` antes de `ALERTA_COOLDOWN_HORAS` horas
   (padrão: `6`) — evita spam se o problema persistir entre execuções. O estado fica em arquivos
   `.last` dentro de `<diretório do log>/alertas/`, limpos manualmente se quiser resetar o cooldown.

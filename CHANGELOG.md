@@ -11,6 +11,9 @@ Pra saber a versão instalada numa máquina: `painel` mostra no cabeçalho, ou c
 
 ### Adicionado
 
+- `alert_webhook` aceita uma URL do Telegram (`https://api.telegram.org/bot<TOKEN>/sendMessage?chat_id=<ID>`)
+  e manda o alerta como mensagem de texto do bot, sem precisar de um adaptador entre o script e o
+  Telegram. Qualquer outra URL continua recebendo o JSON genérico.
 - `status_frota.sh` alerta via `WEBHOOK_URL` (um alerta por host, cooldown independente) quando um
   host fica `OFFLINE` ou em `ALERTA` — antes só mostrava na tabela, sem notificar nada rodando via
   cron sem supervisão.
